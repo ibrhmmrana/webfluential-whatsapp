@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function AdminLoginForm() {
   const [error, setError] = useState("");
@@ -12,55 +13,52 @@ export default function AdminLoginForm() {
     setLoading(true);
 
     const form = e.currentTarget;
+    const email = (form.elements.namedItem("email") as HTMLInputElement)?.value?.trim();
     const password = (form.elements.namedItem("password") as HTMLInputElement)?.value?.trim();
 
-    if (!password) {
-      setError("Password required");
+    if (!email || !password) {
+      setError("Email and password are required");
       setLoading(false);
       return;
     }
 
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-        credentials: "include",
-      });
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        setError(body.error || "Login failed");
-        setLoading(false);
-        return;
-      }
-
-      // Cookie is set via Set-Cookie on the 200 response.
-      // Full page reload so the server layout picks up the cookie.
-      window.location.href = "/";
-    } catch {
-      setError("Network error. Please try again.");
+    if (signInError) {
+      setError(signInError.message === "Invalid login credentials"
+        ? "Invalid email or password"
+        : signInError.message);
       setLoading(false);
+      return;
     }
+
+    window.location.href = "/";
   }
 
   return (
     <div className="admin-login">
       <h1 className="admin-login__title">Admin Login</h1>
-      <form
-        onSubmit={handleSubmit}
-        className="admin-login__form"
-      >
+      <p className="admin-login__hint">Sign in with your account. No sign ups — users are added by an admin.</p>
+      <form onSubmit={handleSubmit} className="admin-login__form">
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          autoComplete="email"
+          required
+          className="admin-login__input"
+        />
         <input
           type="password"
           name="password"
           placeholder="Password"
-          autoFocus
+          autoComplete="current-password"
           required
           className="admin-login__input"
         />
         <button type="submit" disabled={loading} className="admin-login__btn">
-          {loading ? "Logging in..." : "Log in"}
+          {loading ? "Signing in..." : "Sign in"}
         </button>
         {error && <p className="admin-login__error">{error}</p>}
       </form>

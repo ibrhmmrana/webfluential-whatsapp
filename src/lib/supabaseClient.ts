@@ -1,11 +1,8 @@
-import { createClient } from "@supabase/supabase-js";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { createClient } from "@/lib/supabase/client";
 
 /**
- * Client-side Supabase client for Realtime subscriptions.
- * Use for dashboard only. RLS should allow read/subscribe on chatbot_history if needed.
+ * Client-side Supabase client for Realtime (and auth). Uses the SSR browser
+ * client so the session is stored in cookies and works on all domains.
  */
 export const supabaseClient =
-  url && anonKey ? createClient(url, anonKey) : null;
+  typeof window === "undefined" ? null : createClient();

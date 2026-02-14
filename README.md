@@ -18,15 +18,11 @@ Copy `.env.example` to `.env.local` and fill in:
 | **Supabase** | |
 | `NEXT_PUBLIC_SUPABASE_URL` | Project URL. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side writes (webhook, admin API). |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Client-side Realtime in admin dashboard (optional; enable Realtime in Supabase). |
-| **Admin dashboard** | |
-| `ADMIN_DASH_PASSWORD` | Password for `/dashboard-admin` login. |
-| `ADMIN_DASH_COOKIE_SECRET` | Secret for signing the auth cookie. |
-| `ADMIN_DASH_COOKIE_NAME` | Optional; default `app_admin_auth`. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Required for admin dashboard (auth + Realtime). |
 | **AI** | |
 | `OPENAI_API_KEY` | For the WhatsApp AI agent (e.g. gpt-4o-mini). |
 
-**Production (e.g. Vercel):** Set the same variables in your host’s environment (e.g. Vercel → Project → Settings → Environment Variables). For the WhatsApp dashboard to show conversations and messages you must set at least `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `ADMIN_DASH_PASSWORD` / `ADMIN_DASH_COOKIE_SECRET`. Set `NEXT_PUBLIC_SUPABASE_ANON_KEY` for live message updates. Log in on the production URL (e.g. `https://your-app.vercel.app`) so the auth cookie is set for that domain; if you only log in on localhost, the production site will show the login form and API calls will return 401 until you log in on prod.
+**Production (e.g. Vercel):** Set the same variables in your host’s environment (e.g. Vercel → Project → Settings → Environment Variables). Admin auth uses Supabase Auth (email + password). Session is stored in cookies via @supabase/ssr. In Supabase Dashboard go to Authentication → Providers → Email and turn off "Enable Sign Up". Add admin users manually under Authentication → Users → Add user.
 
 ## Database (Supabase)
 

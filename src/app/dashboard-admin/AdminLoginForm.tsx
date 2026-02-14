@@ -1,33 +1,39 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 export default function AdminLoginForm() {
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setLoading(true);
-    try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.error ?? "Login failed");
-        return;
-      }
-      window.location.href = "/dashboard-admin/communications/whatsapp";
-    } catch {
-      setError("Network error");
-    } finally {
+
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem("email") as HTMLInputElement)?.value?.trim();
+    const password = (form.elements.namedItem("password") as HTMLInputElement)?.value?.trim();
+
+    if (!email || !password) {
+      setError("Email and password are required");
       setLoading(false);
+      return;
     }
+
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      setError(signInError.message === "Invalid login credentials"
+        ? "Invalid email or password"
+        : signInError.message);
+      setLoading(false);
+      return;
+    }
+
+    window.location.href = "/";
   }
 
   return (
@@ -35,16 +41,23 @@ export default function AdminLoginForm() {
       <h1 className="admin-login__title">Admin Login</h1>
       <form onSubmit={handleSubmit} className="admin-login__form">
         <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          autoComplete="email"
+          required
+          className="admin-login__input"
+        />
+        <input
           type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          name="password"
           placeholder="Password"
-          autoFocus
-          disabled={loading}
+          autoComplete="current-password"
+          required
           className="admin-login__input"
         />
         <button type="submit" disabled={loading} className="admin-login__btn">
-          {loading ? "Logging in…" : "Log in"}
+          {loading ? "Signing in..." : "Sign in"}
         </button>
         {error && <p className="admin-login__error">{error}</p>}
       </form>
