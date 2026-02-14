@@ -232,7 +232,7 @@ export default function WhatsAppDashboardPage() {
   }, []);
 
   const saveSettings = useCallback(
-    async (update: { devMode?: boolean; allowedNumbers?: string[] }) => {
+    async (update: { devMode?: boolean; allowedNumbers?: string[]; systemPrompt?: string }) => {
       setSavingSettings(true);
       try {
         const authHeaders = await getAuthHeaders();
