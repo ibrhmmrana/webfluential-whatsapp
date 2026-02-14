@@ -132,35 +132,27 @@ export default function WhatsAppDashboardPage() {
   const fetchMessages = useCallback(async (sessionId: string) => {
     setMessagesError(null);
     const authHeaders = await getAuthHeaders();
-    const baseUrl = `/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`;
+    const url = `/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`;
 
-    const fetchOpts = { credentials: "include" as const, headers: authHeaders, cache: "no-store" as const };
-
-    const resRecent = await fetch(`${baseUrl}?recent=100`, fetchOpts);
-    if (!resRecent.ok) {
+    const res = await fetch(url, {
+      credentials: "include",
+      headers: authHeaders,
+      cache: "no-store",
+    });
+    if (!res.ok) {
       let msg = "Failed to load messages.";
       try {
-        const body = await resRecent.json();
+        const body = await res.json();
         if (body.reason) msg = body.reason;
       } catch {}
       setMessagesError(msg);
       setMessages([]);
       return;
     }
-    const dataRecent = await resRecent.json();
-    setMessages(dataRecent.messages ?? []);
-
-    fetch(baseUrl, fetchOpts)
-      .then((resFull) => (resFull.ok ? resFull.json() : null))
-      .then((dataFull) => {
-        const fullMessages = dataFull?.messages ?? [];
-        if (fullMessages.length <= 100) return;
-        setMessages((prev) => {
-          if (selectedSessionIdRef.current !== sessionId) return prev;
-          return fullMessages;
-        });
-      })
-      .catch(() => {});
+    const data = await res.json();
+    const msgs = data.messages ?? [];
+    console.log(`[fetchMessages] ${sessionId}: ${msgs.length} messages loaded`);
+    setMessages(msgs);
   }, []);
 
   const fetchHumanControl = useCallback(async (sessionId: string) => {

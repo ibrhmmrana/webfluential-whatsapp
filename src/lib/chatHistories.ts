@@ -245,6 +245,8 @@ export async function getConversationBySessionId(
     }
   }
 
+  console.log(`[getConversationBySessionId] ${sessionId}: ${allRows.length} raw rows from chatbot_history`);
   const messages = allRows.map(rawRowToChatMessage);
+  console.log(`[getConversationBySessionId] ${sessionId}: ${messages.length} messages after mapping, ids: ${messages.map(m => m.id).join(",")}`);
   return { messages };
 }
