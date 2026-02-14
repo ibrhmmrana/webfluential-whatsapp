@@ -193,17 +193,19 @@ export default function WhatsAppDashboardPage() {
           const row = payload.new as {
             id: number;
             session_id: string;
-            message: { type?: string; content?: string };
-            customer: { number?: string; name?: string };
+            message: unknown;
+            customer: unknown;
             date_time: string;
           };
+          const msg = typeof row.message === "string" ? (() => { try { return JSON.parse(row.message) as { type?: string; content?: string; body?: string }; } catch { return {}; } })() : (row.message as { type?: string; content?: string; body?: string }) ?? {};
+          const customer = typeof row.customer === "string" ? (() => { try { return JSON.parse(row.customer) as { number?: string; name?: string }; } catch { return {}; } })() : (row.customer as { number?: string; name?: string }) ?? {};
           const newMsg: ChatMessage = {
             id: row.id,
             sessionId: row.session_id,
-            senderType: row.message?.type === "human" ? "human" : "ai",
-            content: row.message?.content ?? "",
-            customerName: row.customer?.name ?? null,
-            customerNumber: row.customer?.number ?? "",
+            senderType: msg?.type === "human" ? "human" : "ai",
+            content: msg?.content ?? msg?.body ?? "",
+            customerName: customer?.name ?? null,
+            customerNumber: customer?.number ?? "",
             createdAt: row.date_time,
           };
           const currentSelected = selectedSessionIdRef.current;

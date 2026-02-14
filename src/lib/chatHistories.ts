@@ -1,5 +1,36 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+/** Parse message/customer from DB: can be JSON string or already an object (JSONB). */
+function parseMessage(raw: unknown): { type?: string; content?: string; body?: string } | null {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as { type?: string; content?: string; body?: string };
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw === "object" && raw !== null) {
+    return raw as { type?: string; content?: string; body?: string };
+  }
+  return null;
+}
+
+function parseCustomer(raw: unknown): { number?: string; name?: string } | null {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as { number?: string; name?: string };
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw === "object" && raw !== null) {
+    return raw as { number?: string; name?: string };
+  }
+  return null;
+}
+
 export interface ConversationSummary {
   sessionId: string;
   customerName: string | null;
@@ -57,9 +88,9 @@ export async function getConversations(): Promise<{
   for (const row of rows ?? []) {
     const sessionId = row.session_id as string;
     const existing = bySession.get(sessionId);
-    const msg = row.message as { type?: string; content?: string } | null;
-    const customer = row.customer as { number?: string; name?: string } | null;
-    const content = msg?.content ?? null;
+    const msg = parseMessage(row.message);
+    const customer = parseCustomer(row.customer);
+    const content = msg?.content ?? msg?.body ?? null;
     const isHuman = msg?.type === "human";
 
     if (!existing) {
@@ -125,14 +156,14 @@ export async function getConversationBySessionId(
   }
 
   const messages: ChatMessage[] = (rows ?? []).map((row) => {
-    const msg = row.message as Record<string, unknown> | null;
-    const customer = row.customer as { number?: string; name?: string } | null;
+    const msg = parseMessage(row.message);
+    const customer = parseCustomer(row.customer);
     const type = msg?.type === "human" ? "human" : "ai";
     const content =
       typeof msg?.content === "string"
         ? msg.content
-        : typeof (msg as { body?: string })?.body === "string"
-          ? (msg as { body: string }).body
+        : typeof msg?.body === "string"
+          ? msg.body
           : "";
     return {
       id: row.id,
