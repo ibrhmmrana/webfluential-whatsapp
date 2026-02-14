@@ -61,9 +61,30 @@ export async function GET(request: NextRequest) {
 
   const likeSessionIds = [...new Set((likeRows ?? []).map((r: Record<string, unknown>) => r.session_id))];
 
+  // 5. Find rows in ILIKE but not in exact match
+  const exactIds = new Set((exactRows ?? []).map((r: Record<string, unknown>) => r.id));
+  const missingFromExact = (likeRows ?? [])
+    .filter((r: Record<string, unknown>) => !exactIds.has(r.id))
+    .slice(0, 10)
+    .map((r: Record<string, unknown>) => ({
+      id: r.id,
+      session_id_value: r.session_id,
+      session_id_length: typeof r.session_id === "string" ? (r.session_id as string).length : null,
+      session_id_charCodes: typeof r.session_id === "string"
+        ? Array.from(r.session_id as string).map((c) => c.charCodeAt(0))
+        : null,
+      date_time: r.date_time,
+    }));
+
+  // 6. Also show length and char codes of the queried session ID
+  const queriedCharCodes = Array.from(sessionId).map((c) => c.charCodeAt(0));
+
   return NextResponse.json({
     queriedSessionId: sessionId,
+    queriedSessionIdLength: sessionId.length,
+    queriedCharCodes,
     allDistinctSessionIds: allSessionIds,
+    allDistinctSessionIdLengths: allSessionIds.map((s: unknown) => typeof s === "string" ? (s as string).length : null),
     exactMatchCount: exactRows?.length ?? 0,
     exactError: exactErr?.message ?? null,
     sampleRawRows: sampleRaw,
@@ -71,5 +92,6 @@ export async function GET(request: NextRequest) {
     likeMatchCount: likeRows?.length ?? 0,
     likeError: likeErr?.message ?? null,
     likeMatchSessionIds: likeSessionIds,
+    missingFromExactMatch: missingFromExact,
   });
 }
