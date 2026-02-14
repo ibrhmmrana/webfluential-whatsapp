@@ -1,36 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/** Parse message/customer from DB: can be JSON string or already an object (JSONB). */
-function parseMessage(raw: unknown): { type?: string; content?: string; body?: string } | null {
-  if (raw == null) return null;
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as { type?: string; content?: string; body?: string };
-    } catch {
-      return null;
-    }
-  }
-  if (typeof raw === "object" && raw !== null) {
-    return raw as { type?: string; content?: string; body?: string };
-  }
-  return null;
-}
-
-function parseCustomer(raw: unknown): { number?: string; name?: string } | null {
-  if (raw == null) return null;
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as { number?: string; name?: string };
-    } catch {
-      return null;
-    }
-  }
-  if (typeof raw === "object" && raw !== null) {
-    return raw as { number?: string; name?: string };
-  }
-  return null;
-}
-
 export interface ConversationSummary {
   sessionId: string;
   customerName: string | null;
@@ -64,7 +33,9 @@ export async function getConversations(): Promise<{
 
   const { data: rows, error } = await supabaseAdmin
     .from("chatbot_history")
-    .select("id, session_id, message, customer, date_time")
+    .select(
+      "id, session_id, msg_type:message->>type, msg_content:message->>content, msg_body:message->>body, cust_name:customer->>name, cust_number:customer->>number, date_time"
+    )
     .order("date_time", { ascending: false })
     .limit(50000);
 
@@ -88,26 +59,24 @@ export async function getConversations(): Promise<{
   for (const row of rows ?? []) {
     const sessionId = row.session_id as string;
     const existing = bySession.get(sessionId);
-    const msg = parseMessage(row.message);
-    const customer = parseCustomer(row.customer);
-    const content = msg?.content ?? msg?.body ?? null;
-    const isHuman = msg?.type === "human";
+    const content = (row.msg_content as string) ?? (row.msg_body as string) ?? null;
+    const isHuman = row.msg_type === "human";
 
     if (!existing) {
       bySession.set(sessionId, {
         lastMessageContent: content,
-        lastMessageAt: row.date_time,
-        lastId: row.id,
-        lastCustomerMessageId: isHuman ? row.id : null,
-        customerNumber: customer?.number ?? "",
-        customerName: customer?.name ?? null,
+        lastMessageAt: row.date_time as string,
+        lastId: row.id as number,
+        lastCustomerMessageId: isHuman ? (row.id as number) : null,
+        customerNumber: typeof row.cust_number === "string" ? row.cust_number : "",
+        customerName: typeof row.cust_name === "string" ? row.cust_name : null,
         count: 1,
       });
     } else {
       existing.count += 1;
       // Rows are desc by date_time; first row per session is latest. If we didn't have a human message yet and this (older) row is human, use it as lastCustomerMessageId for unread — we want the latest human message id, so only set when we first see a human (which when iterating desc is the most recent human).
       if (isHuman && existing.lastCustomerMessageId == null) {
-        existing.lastCustomerMessageId = row.id;
+        existing.lastCustomerMessageId = row.id as number;
       }
     }
   }
@@ -135,7 +104,8 @@ export async function getConversations(): Promise<{
 
 /**
  * Get all messages for a conversation, ordered by date_time ascending.
- * Uses a high limit so Supabase default (1000) doesn't hide older messages.
+ * Uses ->> to extract only needed JSONB fields (avoids response truncation
+ * when full JSONB blobs are included in select).
  */
 export async function getConversationBySessionId(
   sessionId: string
@@ -146,7 +116,9 @@ export async function getConversationBySessionId(
 
   const { data: rows, error } = await supabaseAdmin
     .from("chatbot_history")
-    .select("id, session_id, message, customer, date_time")
+    .select(
+      "id, session_id, msg_type:message->>type, msg_content:message->>content, msg_body:message->>body, cust_name:customer->>name, cust_number:customer->>number, date_time"
+    )
     .eq("session_id", sessionId)
     .order("date_time", { ascending: true })
     .limit(10000);
@@ -155,23 +127,21 @@ export async function getConversationBySessionId(
     return { messages: [], error: error.message };
   }
 
-  const messages: ChatMessage[] = (rows ?? []).map((row) => {
-    const msg = parseMessage(row.message);
-    const customer = parseCustomer(row.customer);
-    const type = msg?.type === "human" ? "human" : "ai";
+  const messages: ChatMessage[] = (rows ?? []).map((row: Record<string, unknown>) => {
+    const type = row.msg_type === "human" ? "human" : "ai";
     const content =
-      typeof msg?.content === "string"
-        ? msg.content
-        : typeof msg?.body === "string"
-          ? msg.body
+      typeof row.msg_content === "string" && row.msg_content
+        ? row.msg_content
+        : typeof row.msg_body === "string" && row.msg_body
+          ? (row.msg_body as string)
           : "";
     return {
-      id: row.id,
+      id: row.id as number,
       sessionId: String(row.session_id ?? ""),
       senderType: type as "human" | "ai",
       content,
-      customerName: customer?.name ?? null,
-      customerNumber: customer?.number ?? "",
+      customerName: typeof row.cust_name === "string" ? row.cust_name : null,
+      customerNumber: typeof row.cust_number === "string" ? row.cust_number : "",
       createdAt: row.date_time ? String(row.date_time) : "",
     };
   });
