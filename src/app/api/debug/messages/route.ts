@@ -31,13 +31,27 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // 2. Exact match for the given sessionId
+  // 2a. Exact match WITH heavy JSONB columns (same as prod query)
   const { data: exactRows, error: exactErr } = await supabaseAdmin
     .from("chatbot_history")
     .select("id, session_id, message, customer, date_time")
     .eq("session_id", sessionId)
     .order("date_time", { ascending: true })
     .limit(10000);
+
+  // 2b. Exact match WITHOUT JSONB columns (lightweight)
+  const { data: exactLightRows, error: exactLightErr } = await supabaseAdmin
+    .from("chatbot_history")
+    .select("id, session_id, date_time")
+    .eq("session_id", sessionId)
+    .order("date_time", { ascending: true })
+    .limit(10000);
+
+  // 2c. Count using Supabase head count
+  const { count: exactCount, error: countErr } = await supabaseAdmin
+    .from("chatbot_history")
+    .select("*", { count: "exact", head: true })
+    .eq("session_id", sessionId);
 
   // 3. Sample of first 3 raw rows
   const sampleRaw = (exactRows ?? []).slice(0, 3).map((r: Record<string, unknown>) => ({
@@ -85,8 +99,14 @@ export async function GET(request: NextRequest) {
     queriedCharCodes,
     allDistinctSessionIds: allSessionIds,
     allDistinctSessionIdLengths: allSessionIds.map((s: unknown) => typeof s === "string" ? (s as string).length : null),
-    exactMatchCount: exactRows?.length ?? 0,
+    exactMatchWithJsonb: exactRows?.length ?? 0,
+    exactMatchWithoutJsonb: exactLightRows?.length ?? 0,
+    exactHeadCount: exactCount,
     exactError: exactErr?.message ?? null,
+    exactLightError: exactLightErr?.message ?? null,
+    countError: countErr?.message ?? null,
+    exactWithJsonbIds: (exactRows ?? []).map((r: Record<string, unknown>) => r.id),
+    exactWithoutJsonbIds: (exactLightRows ?? []).map((r: Record<string, unknown>) => r.id),
     sampleRawRows: sampleRaw,
     likeMatchBaseNumber: baseNumber,
     likeMatchCount: likeRows?.length ?? 0,
