@@ -64,5 +64,7 @@ If **conversations don’t load** or **live messages don’t appear** on product
 ## Routes
 
 - `GET/POST /api/whatsapp/webhook` — Meta webhook (verify + receive messages).
-- `/dashboard-admin` — Admin home (login if not authenticated).
-- `/dashboard-admin/communications/whatsapp` — WhatsApp conversations, take over / handover to AI, send messages.
+- `/` — Admin home (login if not authenticated).
+- `/whatsapp` — WhatsApp conversations, take over / handover to AI, send messages.
+
+Redirects: `/dashboard-admin` → `/`, `/dashboard-admin/communications/whatsapp` → `/whatsapp` (for old links).

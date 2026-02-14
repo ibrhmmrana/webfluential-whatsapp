@@ -1,8 +1,11 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Webfluential",
+  title: "WhatsApp - Webfluential",
   description: "WhatsApp Webhook Integration",
+  icons: {
+    icon: "/webfluential%20favicon.svg",
+  },
 };
 
 export default function RootLayout({

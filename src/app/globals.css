@@ -50,7 +50,8 @@ textarea {
 /* Admin login */
 .admin-login-wrap {
   min-height: 100vh;
-  background: var(--bg-primary);
+  background: var(--bg-primary) url("/Screenshot%202026-02-14%20213916.png") no-repeat center center;
+  background-size: cover;
 }
 .admin-login {
   min-height: 100vh;
@@ -59,11 +60,19 @@ textarea {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: var(--bg-primary);
+}
+.admin-login__logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  margin-bottom: 1rem;
 }
 .admin-login__title {
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 4rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  word-spacing: -0.2em;
 }
 .admin-login__hint {
   color: var(--text-muted);
@@ -73,29 +82,78 @@ textarea {
 .admin-login__form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
   width: 100%;
-  max-width: 280px;
+  max-width: 320px;
+}
+.admin-login__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.admin-login__label {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 .admin-login__input {
   padding: 0.75rem 1rem;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-secondary);
+  background: var(--bg-tertiary);
   color: var(--text-primary);
   font-size: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.admin-login__input::placeholder {
+  color: var(--text-muted);
 }
 .admin-login__input:focus {
   outline: none;
   border-color: var(--accent);
 }
+.admin-login__password-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+.admin-login__password-header .admin-login__label {
+  margin: 0;
+}
+.admin-login__show-password {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  font-size: 0.875rem;
+  cursor: pointer;
+  font-family: inherit;
+  flex-shrink: 0;
+}
+.admin-login__show-password:hover {
+  text-decoration: underline;
+}
+.admin-login__show-password-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
 .admin-login__btn {
+  width: 100%;
   padding: 0.75rem 1rem;
   background: var(--accent);
   color: white;
   border: none;
   border-radius: 8px;
   font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
 }
 .admin-login__btn:hover:not(:disabled) {
   background: var(--accent-hover);
@@ -124,6 +182,102 @@ textarea {
   display: flex;
   flex-direction: column;
   padding: 1rem 0;
+  transition: width 0.2s ease;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__sidebar {
+  width: 72px;
+  align-items: center;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logo-text,
+.dashboard-admin--sidebar-collapsed .dashboard-admin__nav-item-text,
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logout-text {
+  opacity: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  pointer-events: none;
+  position: absolute;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logo {
+  padding: 0.75rem 0;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logo-icon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__collapse {
+  width: 24px;
+  height: 24px;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__nav {
+  width: 100%;
+  align-items: center;
+  padding: 0.75rem 0;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__nav-item {
+  justify-content: center;
+  padding: 0.75rem;
+  margin: 0;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  border-radius: 10px;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__nav-item--active {
+  padding: 0.75rem;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__nav-item--active::before {
+  left: 0;
+  top: 50%;
+  bottom: auto;
+  height: 24px;
+  width: 3px;
+  transform: translateY(-50%);
+  border-radius: 0 3px 3px 0;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__nav-icon {
+  margin: 0;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__nav-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__footer {
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logout {
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border-radius: 10px;
+  align-items: center;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logout-icon svg {
+  width: 22px;
+  height: 22px;
 }
 .dashboard-admin__logo {
   display: flex;
@@ -132,6 +286,8 @@ textarea {
   padding: 1rem 1.25rem;
   margin-bottom: 0;
   border-bottom: 1px solid var(--border);
+  transition: padding 0.2s ease;
+  position: relative;
 }
 .dashboard-admin__logo-icon {
   width: 36px;
@@ -145,6 +301,7 @@ textarea {
   font-size: 1.25rem;
   color: var(--text-primary);
   flex: 1;
+  transition: opacity 0.2s ease, width 0.2s ease;
 }
 .dashboard-admin__collapse {
   width: 28px;
@@ -191,7 +348,7 @@ textarea {
 }
 .dashboard-admin__nav-item--active {
   font-weight: 700;
-  margin-left: 0;
+  margin-left: 0.25rem;
   padding-left: 1rem;
   background: #08253d;
   color: #36b2fa;
@@ -200,7 +357,7 @@ textarea {
 .dashboard-admin__nav-item--active::before {
   content: "";
   position: absolute;
-  left: 0;
+  left: 0.25rem;
   top: 0;
   bottom: 0;
   width: 4px;
@@ -237,9 +394,27 @@ textarea {
   border-top: 1px solid var(--border);
 }
 .dashboard-admin__logout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   color: var(--text-secondary);
   font-size: 0.875rem;
   text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+}
+.dashboard-admin__logout-icon {
+  display: none;
+  flex-shrink: 0;
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logout-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
 }
 .dashboard-admin__logout:hover {
   color: var(--accent);
@@ -393,10 +568,41 @@ textarea {
 .whatsapp-dash__messages {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  scrollbar-gutter: stable;
+  --scrollbar-thumb: rgba(51, 65, 85, 0.9);
+  --scrollbar-thumb-hover: rgba(71, 85, 105, 0.95);
+  --scrollbar-track: transparent;
+}
+/* Floating dark scrollbar: WebKit (Chrome, Safari, Edge) */
+.whatsapp-dash__messages::-webkit-scrollbar {
+  width: 8px;
+}
+.whatsapp-dash__messages::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  margin: 4px 0;
+}
+.whatsapp-dash__messages::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+  min-height: 40px;
+}
+.whatsapp-dash__messages::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+.whatsapp-dash__messages::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* Firefox: thin dark scrollbar */
+@supports (scrollbar-width: thin) {
+  .whatsapp-dash__messages {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
 }
 .whatsapp-dash__msg {
   display: flex;

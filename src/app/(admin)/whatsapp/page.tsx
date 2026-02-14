@@ -132,23 +132,35 @@ export default function WhatsAppDashboardPage() {
   const fetchMessages = useCallback(async (sessionId: string) => {
     setMessagesError(null);
     const authHeaders = await getAuthHeaders();
-    const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`, {
-      credentials: "include",
-      headers: authHeaders,
-      cache: "no-store",
-    });
-    if (!res.ok) {
+    const baseUrl = `/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`;
+
+    const fetchOpts = { credentials: "include" as const, headers: authHeaders, cache: "no-store" as const };
+
+    const resRecent = await fetch(`${baseUrl}?recent=100`, fetchOpts);
+    if (!resRecent.ok) {
       let msg = "Failed to load messages.";
       try {
-        const body = await res.json();
+        const body = await resRecent.json();
         if (body.reason) msg = body.reason;
       } catch {}
       setMessagesError(msg);
       setMessages([]);
       return;
     }
-    const data = await res.json();
-    setMessages(data.messages ?? []);
+    const dataRecent = await resRecent.json();
+    setMessages(dataRecent.messages ?? []);
+
+    fetch(baseUrl, fetchOpts)
+      .then((resFull) => (resFull.ok ? resFull.json() : null))
+      .then((dataFull) => {
+        const fullMessages = dataFull?.messages ?? [];
+        if (fullMessages.length <= 100) return;
+        setMessages((prev) => {
+          if (selectedSessionIdRef.current !== sessionId) return prev;
+          return fullMessages;
+        });
+      })
+      .catch(() => {});
   }, []);
 
   const fetchHumanControl = useCallback(async (sessionId: string) => {
@@ -177,7 +189,13 @@ export default function WhatsAppDashboardPage() {
   }, [selectedSessionId, fetchMessages, fetchHumanControl]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = scrollRef.current;
+    if (!el) return;
+    const scrollToBottom = () => {
+      el.scrollTop = el.scrollHeight;
+    };
+    scrollToBottom();
+    requestAnimationFrame(scrollToBottom);
   }, [messages]);
 
   useEffect(() => {
@@ -296,6 +314,22 @@ export default function WhatsAppDashboardPage() {
       });
       if (res.ok) {
         setInputValue("");
+        // Show sent message in list preview immediately
+        if (selectedSessionId) {
+          const now = new Date().toISOString();
+          setConversations((prev) => {
+            const updated = prev.map((c) =>
+              c.sessionId === selectedSessionId
+                ? { ...c, lastMessageContent: text, lastMessageAt: now }
+                : c
+            );
+            return updated.sort((a, b) => {
+              const t1 = a.lastMessageAt ?? "";
+              const t2 = b.lastMessageAt ?? "";
+              return t2.localeCompare(t1);
+            });
+          });
+        }
       }
     } finally {
       setSending(false);
@@ -425,16 +459,13 @@ export default function WhatsAppDashboardPage() {
                   </button>
                 </>
               ) : (
-                <>
-                  <span className="whatsapp-dash__input-label">AI in Control</span>
-                  <button
-                    type="button"
-                    onClick={handleTakeOver}
-                    className="whatsapp-dash__btn whatsapp-dash__btn--primary"
-                  >
-                    Take over
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={handleTakeOver}
+                  className="whatsapp-dash__btn whatsapp-dash__btn--primary"
+                >
+                  Take over
+                </button>
               )}
             </div>
           </>

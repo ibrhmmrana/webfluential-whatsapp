@@ -144,7 +144,7 @@ Possible explanations (to be verified by the fixer):
 ## 8. Additional context: path change and cookie details
 
 ### Path change
-The app originally used `/dashboard-admin/communications/whatsapp` for the WhatsApp page. It was later changed so the dashboard is at `/` (home) and WhatsApp is at `/whatsapp`. The old `/dashboard-admin/` routes still exist in the codebase (`src/app/dashboard-admin/`) with their own layout, pages, and a `DashboardLayoutClient` that links to the old paths. These old routes also check Supabase auth.
+The app originally used `/dashboard-admin/communications/whatsapp` for the WhatsApp page. The dashboard is now at `/` (home) and WhatsApp at `/whatsapp`. The old `src/app/dashboard-admin/` routes have been removed; redirects in `next.config.js` send `/dashboard-admin` and `/dashboard-admin/communications/whatsapp` to `/` and `/whatsapp` respectively.
 
 **Is the path change the cause?** Probably not directly. Supabase SSR uses `DEFAULT_COOKIE_OPTIONS` with `path: "/"` (file: `node_modules/@supabase/ssr/src/utils/constants.ts`), so cookies are set at the root and should be sent on all paths including `/api/...`. But there could be **indirect issues**: stale cookies from old auth (cookie name `app_admin_auth`), conflicting route layouts, or Vercel caching old builds.
 

@@ -20,8 +20,12 @@ export interface ChatMessage {
   createdAt: string;
 }
 
+const LIST_PAGE_SIZE = 500;
+const LIST_MAX_PAGES = 200;
+
 /**
  * List conversations: group by session_id, latest message, count. Sorted by last message desc.
+ * Fetches in pages (newest first) so the first row seen per session is always the most recent message.
  */
 export async function getConversations(): Promise<{
   conversations: ConversationSummary[];
@@ -31,16 +35,27 @@ export async function getConversations(): Promise<{
     return { conversations: [], error: "Supabase not configured" };
   }
 
-  const { data: rows, error } = await supabaseAdmin
-    .from("chatbot_history")
-    .select(
-      "id, session_id, msg_type:message->>type, msg_content:message->>content, msg_body:message->>body, cust_name:customer->>name, cust_number:customer->>number, date_time"
-    )
-    .order("date_time", { ascending: false })
-    .limit(50000);
+  const selectCols =
+    "id, session_id, msg_type:message->>type, msg_content:message->>content, msg_body:message->>body, cust_name:customer->>name, cust_number:customer->>number, date_time";
+  const allRows: Record<string, unknown>[] = [];
+  let offset = 0;
+  let pageCount = 0;
 
-  if (error) {
-    return { conversations: [], error: error.message };
+  while (pageCount < LIST_MAX_PAGES) {
+    pageCount += 1;
+    const { data: rows, error } = await supabaseAdmin
+      .from("chatbot_history")
+      .select(selectCols)
+      .order("date_time", { ascending: false })
+      .range(offset, offset + LIST_PAGE_SIZE - 1);
+
+    if (error) {
+      return { conversations: [], error: error.message };
+    }
+    const page = rows ?? [];
+    allRows.push(...(page as Record<string, unknown>[]));
+    if (page.length < LIST_PAGE_SIZE) break;
+    offset += LIST_PAGE_SIZE;
   }
 
   const bySession = new Map<
@@ -56,7 +71,7 @@ export async function getConversations(): Promise<{
     }
   >();
 
-  for (const row of rows ?? []) {
+  for (const row of allRows) {
     const sessionId = row.session_id as string;
     const existing = bySession.get(sessionId);
     const content = (row.msg_content as string) ?? (row.msg_body as string) ?? null;
@@ -102,10 +117,65 @@ export async function getConversations(): Promise<{
   return { conversations };
 }
 
+const MESSAGES_PAGE_SIZE = 500;
+const MESSAGES_MAX_PAGES = 200; // 200 * 500 = 100k messages max per session
+
+function rowToChatMessage(row: Record<string, unknown>): ChatMessage {
+  const type = row.msg_type === "human" ? "human" : "ai";
+  const content =
+    typeof row.msg_content === "string" && row.msg_content
+      ? row.msg_content
+      : typeof row.msg_body === "string" && row.msg_body
+        ? (row.msg_body as string)
+        : "";
+  return {
+    id: row.id as number,
+    sessionId: String(row.session_id ?? ""),
+    senderType: type as "human" | "ai",
+    content,
+    customerName: typeof row.cust_name === "string" ? row.cust_name : null,
+    customerNumber: typeof row.cust_number === "string" ? row.cust_number : "",
+    createdAt: row.date_time ? String(row.date_time) : "",
+  };
+}
+
+const RECENT_INITIAL_LIMIT = 100;
+const selectCols =
+  "id, session_id, msg_type:message->>type, msg_content:message->>content, msg_body:message->>body, cust_name:customer->>name, cust_number:customer->>number, date_time";
+
 /**
- * Get all messages for a conversation, ordered by date_time ascending.
- * Uses ->> to extract only needed JSONB fields (avoids response truncation
- * when full JSONB blobs are included in select).
+ * Get the most recent N messages for a conversation (single query, fast).
+ * Returns messages in chronological order (oldest first) for display.
+ */
+export async function getConversationRecent(
+  sessionId: string,
+  limit: number = RECENT_INITIAL_LIMIT
+): Promise<{ messages: ChatMessage[]; error?: string }> {
+  if (!supabaseAdmin) {
+    return { messages: [], error: "Supabase not configured" };
+  }
+
+  const cap = Math.min(Math.max(1, limit), 500);
+  const { data: rows, error } = await supabaseAdmin
+    .from("chatbot_history")
+    .select(selectCols)
+    .eq("session_id", sessionId)
+    .order("date_time", { ascending: false })
+    .limit(cap);
+
+  if (error) {
+    return { messages: [], error: error.message };
+  }
+
+  const reversed = (rows ?? []).slice(0).reverse();
+  const messages = (reversed as Record<string, unknown>[]).map(rowToChatMessage);
+  return { messages };
+}
+
+/**
+ * Get ALL messages for a conversation, ordered by date_time ascending.
+ * Fetches in pages to avoid any response size/row limit; guarantees every
+ * message for the session_id is returned.
  */
 export async function getConversationBySessionId(
   sessionId: string
@@ -114,37 +184,34 @@ export async function getConversationBySessionId(
     return { messages: [], error: "Supabase not configured" };
   }
 
-  const { data: rows, error } = await supabaseAdmin
-    .from("chatbot_history")
-    .select(
-      "id, session_id, msg_type:message->>type, msg_content:message->>content, msg_body:message->>body, cust_name:customer->>name, cust_number:customer->>number, date_time"
-    )
-    .eq("session_id", sessionId)
-    .order("date_time", { ascending: true })
-    .limit(10000);
+  const allRows: Record<string, unknown>[] = [];
+  let offset = 0;
+  let hasMore = true;
+  let pageCount = 0;
 
-  if (error) {
-    return { messages: [], error: error.message };
+  while (hasMore && pageCount < MESSAGES_MAX_PAGES) {
+    pageCount += 1;
+    const { data: rows, error } = await supabaseAdmin
+      .from("chatbot_history")
+      .select(selectCols)
+      .eq("session_id", sessionId)
+      .order("date_time", { ascending: true })
+      .range(offset, offset + MESSAGES_PAGE_SIZE - 1);
+
+    if (error) {
+      return { messages: [], error: error.message };
+    }
+
+    const page = rows ?? [];
+    allRows.push(...(page as Record<string, unknown>[]));
+
+    if (page.length < MESSAGES_PAGE_SIZE) {
+      hasMore = false;
+    } else {
+      offset += MESSAGES_PAGE_SIZE;
+    }
   }
 
-  const messages: ChatMessage[] = (rows ?? []).map((row: Record<string, unknown>) => {
-    const type = row.msg_type === "human" ? "human" : "ai";
-    const content =
-      typeof row.msg_content === "string" && row.msg_content
-        ? row.msg_content
-        : typeof row.msg_body === "string" && row.msg_body
-          ? (row.msg_body as string)
-          : "";
-    return {
-      id: row.id as number,
-      sessionId: String(row.session_id ?? ""),
-      senderType: type as "human" | "ai",
-      content,
-      customerName: typeof row.cust_name === "string" ? row.cust_name : null,
-      customerNumber: typeof row.cust_number === "string" ? row.cust_number : "",
-      createdAt: row.date_time ? String(row.date_time) : "",
-    };
-  });
-
+  const messages = allRows.map(rowToChatMessage);
   return { messages };
 }

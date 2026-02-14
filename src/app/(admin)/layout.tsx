@@ -5,7 +5,7 @@ import DashboardLayoutClient from "./DashboardLayoutClient";
 import AdminLoginForm from "./AdminLoginForm";
 
 export const metadata = {
-  title: "Webfluential",
+  title: "WhatsApp - Webfluential",
   robots: "noindex, nofollow",
 };
 

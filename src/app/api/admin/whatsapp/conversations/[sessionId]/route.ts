@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { noIndexHeaders } from "@/lib/adminAuth";
-import { getConversationBySessionId } from "@/lib/chatHistories";
+import { getConversationBySessionId, getConversationRecent } from "@/lib/chatHistories";
 
 export async function GET(
   request: NextRequest,
@@ -27,7 +27,14 @@ export async function GET(
     return NextResponse.json({ error: "sessionId required" }, { status: 400, headers });
   }
 
-  const { messages, error } = await getConversationBySessionId(sessionId);
+  const recentParam = request.nextUrl.searchParams.get("recent");
+  const useFastPath = recentParam !== null && recentParam !== "";
+  const limit = useFastPath ? Math.min(500, Math.max(1, parseInt(recentParam, 10) || 100)) : 0;
+
+  const { messages, error } = useFastPath
+    ? await getConversationRecent(sessionId, limit)
+    : await getConversationBySessionId(sessionId);
+
   if (error) {
     return NextResponse.json(
       { error: "Failed to load messages", reason: error },

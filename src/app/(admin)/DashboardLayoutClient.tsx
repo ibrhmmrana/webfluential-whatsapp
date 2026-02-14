@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -18,6 +19,15 @@ function IconWhatsApp() {
     </svg>
   );
 }
+function IconLogout() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
+    </svg>
+  );
+}
 export default function DashboardLayoutClient({
   children,
 }: {
@@ -26,9 +36,14 @@ export default function DashboardLayoutClient({
   const pathname = usePathname();
   const homeActive = pathname === "/";
   const whatsappActive = pathname === "/whatsapp";
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const handleLogout = () => {
+    window.location.href = "/api/admin/logout";
+  };
 
   return (
-    <div className="dashboard-admin">
+    <div className={`dashboard-admin ${sidebarCollapsed ? "dashboard-admin--sidebar-collapsed" : ""}`}>
       <aside className="dashboard-admin__sidebar">
         <div className="dashboard-admin__logo">
           <img
@@ -39,8 +54,13 @@ export default function DashboardLayoutClient({
             height={36}
           />
           <span className="dashboard-admin__logo-text">Webfluential</span>
-          <button type="button" className="dashboard-admin__collapse" aria-label="Collapse sidebar">
-            «
+          <button
+            type="button"
+            className="dashboard-admin__collapse"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={() => setSidebarCollapsed((c) => !c)}
+          >
+            {sidebarCollapsed ? "»" : "«"}
           </button>
         </div>
         <nav className="dashboard-admin__nav">
@@ -49,20 +69,26 @@ export default function DashboardLayoutClient({
             className={`dashboard-admin__nav-item ${homeActive ? "dashboard-admin__nav-item--active" : ""}`}
           >
             <span className="dashboard-admin__nav-icon"><IconHome /></span>
-            Home
+            <span className="dashboard-admin__nav-item-text">Home</span>
           </Link>
           <Link
             href="/whatsapp"
             className={`dashboard-admin__nav-item ${whatsappActive ? "dashboard-admin__nav-item--active" : ""}`}
           >
             <span className="dashboard-admin__nav-icon"><IconWhatsApp /></span>
-            WhatsApp
+            <span className="dashboard-admin__nav-item-text">WhatsApp</span>
           </Link>
         </nav>
         <div className="dashboard-admin__footer">
-          <a href="/api/admin/logout" className="dashboard-admin__logout">
-            Log out
-          </a>
+          <button
+            type="button"
+            className="dashboard-admin__logout"
+            onClick={handleLogout}
+            title="Log out"
+          >
+            <span className="dashboard-admin__logout-icon" aria-hidden><IconLogout /></span>
+            <span className="dashboard-admin__logout-text">Log out</span>
+          </button>
         </div>
       </aside>
       <main className="dashboard-admin__main">{children}</main>

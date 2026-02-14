@@ -85,14 +85,14 @@ Use a server-side Supabase client to read from `chatbot_history` for history. No
 
 ### 5. Admin dashboard – auth
 
-- **Login:** A page (e.g. `/dashboard-admin` or `/admin`) that shows a password field. On submit, POST to `/api/admin/login` with `{ password }`. The API compares password to `ADMIN_DASH_PASSWORD`; if it matches, set an HTTP-only cookie with value = HMAC-SHA256(password, ADMIN_DASH_COOKIE_SECRET) (or similar), cookie name from `ADMIN_DASH_COOKIE_NAME`, path `/`, maxAge 30 days, httpOnly, sameSite lax, secure in production.
+- **Login:** A page (e.g. `/` or `/admin`) that shows a login form. On submit, POST to `/api/admin/login` with `{ password }`. The API compares password to `ADMIN_DASH_PASSWORD`; if it matches, set an HTTP-only cookie with value = HMAC-SHA256(password, ADMIN_DASH_COOKIE_SECRET) (or similar), cookie name from `ADMIN_DASH_COOKIE_NAME`, path `/`, maxAge 30 days, httpOnly, sameSite lax, secure in production.
 - **Protection:** A dashboard layout that reads the cookie and, if missing or invalid, shows the login form instead of children. All admin API routes (conversations, human-control, send-message) must check this cookie (same HMAC check) and return 401 if not authed. Use a shared `isAuthed(request)` and `noIndexHeaders()` (e.g. `X-Robots-Tag: noindex, nofollow`).
 
 ---
 
 ### 6. Admin dashboard – WhatsApp UI
 
-- **Route:** e.g. `/dashboard-admin/communications/whatsapp` (or `/admin/whatsapp`). Page is a client component that implements the following.
+- **Route:** e.g. `/whatsapp`. Page is a client component that implements the following.
 
 **Data and API:**
 
@@ -130,8 +130,8 @@ You can omit the “Customer Activity” sidebar panel or add a stub panel that 
 - `src/app/api/admin/whatsapp/conversations/[sessionId]/route.ts` — GET, auth, return messages.
 - `src/app/api/admin/whatsapp/human-control/route.ts` — GET (query sessionId), POST (body sessionId, isHumanInControl).
 - `src/app/api/admin/whatsapp/send-message/route.ts` — POST, auth, send via WhatsApp and save to chatbot_history.
-- `src/app/dashboard-admin/layout.tsx` — check auth, show login form or DashboardLayoutClient with sidebar + children.
-- `src/app/dashboard-admin/communications/whatsapp/page.tsx` — export a client component that implements the WhatsApp dashboard UI above.
+- `src/app/(admin)/layout.tsx` — check auth, show login form or DashboardLayoutClient with sidebar + children.
+- `src/app/(admin)/whatsapp/page.tsx` — export a client component that implements the WhatsApp dashboard UI above.
 
 Use `export const dynamic = 'force-dynamic'` and `export const runtime = 'nodejs'` on API routes. Session ID must be consistent everywhere: webhook, send-message, human-control, and conversation list/detail (all use the same prefix + phone number).
 
