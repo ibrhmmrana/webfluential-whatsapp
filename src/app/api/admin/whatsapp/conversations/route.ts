@@ -1,17 +1,16 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import { noIndexHeaders } from "@/lib/adminAuth";
 import { getConversations } from "@/lib/chatHistories";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const headers = new Headers();
   Object.entries(noIndexHeaders()).forEach(([k, v]) => headers.set(k, v));
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser(request);
   if (!user) {
     return NextResponse.json(
       { error: "Unauthorized", reason: "Not signed in" },

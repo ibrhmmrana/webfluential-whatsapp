@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/server";
 import { noIndexHeaders } from "@/lib/adminAuth";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/sender";
 import { saveWhatsAppMessage } from "@/lib/whatsapp/messageStorage";
@@ -18,8 +18,7 @@ export async function POST(request: NextRequest) {
   const headers = new Headers();
   Object.entries(noIndexHeaders()).forEach(([k, v]) => headers.set(k, v));
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthUser(request);
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
   }

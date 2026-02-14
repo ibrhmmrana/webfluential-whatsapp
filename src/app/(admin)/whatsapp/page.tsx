@@ -56,6 +56,14 @@ function addViewed(id: number) {
   } catch {}
 }
 
+/** Auth headers so API routes can validate when cookies are not sent (e.g. custom domain). */
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (!supabaseClient) return {};
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session?.access_token) return { Authorization: `Bearer ${session.access_token}` };
+  return {};
+}
+
 export default function WhatsAppDashboardPage() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -81,7 +89,11 @@ export default function WhatsAppDashboardPage() {
 
   const fetchConversations = useCallback(async () => {
     setListError(null);
-    const res = await fetch("/api/admin/whatsapp/conversations", { credentials: "include" });
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch("/api/admin/whatsapp/conversations", {
+      credentials: "include",
+      headers: authHeaders,
+    });
     if (!res.ok) {
       let msg = "Failed to load conversations.";
       try {
@@ -98,7 +110,11 @@ export default function WhatsAppDashboardPage() {
 
   const fetchMessages = useCallback(async (sessionId: string) => {
     setMessagesError(null);
-    const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`, { credentials: "include" });
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`, {
+      credentials: "include",
+      headers: authHeaders,
+    });
     if (!res.ok) {
       let msg = "Failed to load messages.";
       try {
@@ -114,7 +130,11 @@ export default function WhatsAppDashboardPage() {
   }, []);
 
   const fetchHumanControl = useCallback(async (sessionId: string) => {
-    const res = await fetch(`/api/admin/whatsapp/human-control?sessionId=${encodeURIComponent(sessionId)}`, { credentials: "include" });
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch(`/api/admin/whatsapp/human-control?sessionId=${encodeURIComponent(sessionId)}`, {
+      credentials: "include",
+      headers: authHeaders,
+    });
     if (!res.ok) return;
     const data = await res.json();
     setHumanInControl(data.isHumanInControl === true);
@@ -209,9 +229,10 @@ export default function WhatsAppDashboardPage() {
 
   const handleTakeOver = async () => {
     if (!selectedSessionId) return;
+    const authHeaders = await getAuthHeaders();
     const res = await fetch("/api/admin/whatsapp/human-control", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({ sessionId: selectedSessionId, isHumanInControl: true }),
       credentials: "include",
     });
@@ -220,9 +241,10 @@ export default function WhatsAppDashboardPage() {
 
   const handleHandoverToAI = async () => {
     if (!selectedSessionId) return;
+    const authHeaders = await getAuthHeaders();
     const res = await fetch("/api/admin/whatsapp/human-control", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({ sessionId: selectedSessionId, isHumanInControl: false }),
       credentials: "include",
     });
@@ -237,9 +259,10 @@ export default function WhatsAppDashboardPage() {
     if (!text || !customerNumber || sending) return;
     setSending(true);
     try {
+      const authHeaders = await getAuthHeaders();
       const res = await fetch("/api/admin/whatsapp/send-message", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders },
         body: JSON.stringify({
           message: text,
           customerName: selectedConv?.customerName ?? undefined,
