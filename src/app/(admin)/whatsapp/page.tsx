@@ -81,7 +81,7 @@ export default function WhatsAppDashboardPage() {
 
   const fetchConversations = useCallback(async () => {
     setListError(null);
-    const res = await fetch("/api/admin/whatsapp/conversations");
+    const res = await fetch("/api/admin/whatsapp/conversations", { credentials: "include" });
     if (!res.ok) {
       const msg = res.status === 401
         ? "Please log in again (session may have expired or you’re on a different domain)."
@@ -96,10 +96,10 @@ export default function WhatsAppDashboardPage() {
 
   const fetchMessages = useCallback(async (sessionId: string) => {
     setMessagesError(null);
-    const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`);
+    const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`, { credentials: "include" });
     if (!res.ok) {
       const msg = res.status === 401
-        ? "Please log in again."
+        ? "Session expired. Go to the home page and log in again."
         : "Failed to load messages.";
       setMessagesError(msg);
       setMessages([]);
@@ -110,7 +110,7 @@ export default function WhatsAppDashboardPage() {
   }, []);
 
   const fetchHumanControl = useCallback(async (sessionId: string) => {
-    const res = await fetch(`/api/admin/whatsapp/human-control?sessionId=${encodeURIComponent(sessionId)}`);
+    const res = await fetch(`/api/admin/whatsapp/human-control?sessionId=${encodeURIComponent(sessionId)}`, { credentials: "include" });
     if (!res.ok) return;
     const data = await res.json();
     setHumanInControl(data.isHumanInControl === true);
@@ -209,6 +209,7 @@ export default function WhatsAppDashboardPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId: selectedSessionId, isHumanInControl: true }),
+      credentials: "include",
     });
     if (res.ok) setHumanInControl(true);
   };
@@ -219,6 +220,7 @@ export default function WhatsAppDashboardPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sessionId: selectedSessionId, isHumanInControl: false }),
+      credentials: "include",
     });
     if (res.ok) {
       setHumanInControl(false);
@@ -239,6 +241,7 @@ export default function WhatsAppDashboardPage() {
           customerName: selectedConv?.customerName ?? undefined,
           customerNumber,
         }),
+        credentials: "include",
       });
       if (res.ok) {
         setInputValue("");
