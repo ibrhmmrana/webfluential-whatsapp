@@ -8,5 +8,12 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 export const supabaseAdmin = supabaseUrl && supabaseServiceKey
-  ? createClient(supabaseUrl, supabaseServiceKey, { auth: { persistSession: false } })
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false },
+      global: {
+        // Bypass the Next.js Data Cache so every query hits the DB directly.
+        fetch: (url, init) =>
+          fetch(url, { ...init, cache: "no-store" }),
+      },
+    })
   : null;
