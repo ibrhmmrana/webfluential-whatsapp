@@ -94,6 +94,7 @@ export default function WhatsAppDashboardPage() {
       return fetch("/api/admin/whatsapp/conversations", {
         credentials: "include",
         headers,
+        cache: "no-store",
       });
     };
 
@@ -134,6 +135,7 @@ export default function WhatsAppDashboardPage() {
     const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`, {
       credentials: "include",
       headers: authHeaders,
+      cache: "no-store",
     });
     if (!res.ok) {
       let msg = "Failed to load messages.";

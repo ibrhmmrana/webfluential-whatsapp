@@ -9,6 +9,7 @@ import { getConversations } from "@/lib/chatHistories";
 export async function GET(request: NextRequest) {
   const headers = new Headers();
   Object.entries(noIndexHeaders()).forEach(([k, v]) => headers.set(k, v));
+  headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
 
   // Debug: what did this request actually receive? (so we can see why auth fails)
   const allCookies = request.cookies.getAll();

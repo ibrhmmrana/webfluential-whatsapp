@@ -12,6 +12,7 @@ export async function GET(
 ) {
   const headers = new Headers();
   Object.entries(noIndexHeaders()).forEach(([k, v]) => headers.set(k, v));
+  headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
 
   const user = await getAuthUser(request);
   if (!user) {
