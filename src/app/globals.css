@@ -843,7 +843,12 @@ textarea {
   overflow: hidden;
 }
 .whatsapp-dash__settings-toggle-option {
-  padding: 0.4rem 0.875rem;
+  flex: 1;
+  min-width: 0;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-secondary);
@@ -851,6 +856,8 @@ textarea {
   border: none;
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
+  text-align: center;
+  box-sizing: border-box;
 }
 .whatsapp-dash__settings-toggle-option:hover:not(:disabled) {
   color: var(--text-primary);
