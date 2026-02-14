@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { DEFAULT_SYSTEM_PROMPT } from "@/lib/whatsapp/aiModeSettings";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -103,6 +104,15 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return {};
 }
 
+function SettingsIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+    </svg>
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
@@ -120,6 +130,19 @@ export default function WhatsAppDashboardPage() {
   const [listError, setListError] = useState<string | null>(null);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<number>>(getViewedSet);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [aiSettings, setAiSettings] = useState<{
+    devMode: boolean;
+    allowedNumbers: string[];
+    systemPrompt: string;
+  }>({
+    devMode: true,
+    allowedNumbers: [],
+    systemPrompt: "",
+  });
+  const [newNumberInput, setNewNumberInput] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [promptSectionOpen, setPromptSectionOpen] = useState(false);
 
   /* Refs */
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -191,6 +214,77 @@ export default function WhatsAppDashboardPage() {
     const data = await res.json();
     setHumanInControl(data.isHumanInControl === true);
   }, []);
+
+  const fetchSettings = useCallback(async () => {
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch("/api/admin/whatsapp/settings", {
+      credentials: "include",
+      headers: authHeaders,
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    setAiSettings({
+      devMode: data.devMode !== false,
+      allowedNumbers: Array.isArray(data.allowedNumbers) ? data.allowedNumbers : [],
+      systemPrompt: typeof data.systemPrompt === "string" ? data.systemPrompt : "",
+    });
+  }, []);
+
+  const saveSettings = useCallback(
+    async (update: { devMode?: boolean; allowedNumbers?: string[] }) => {
+      setSavingSettings(true);
+      try {
+        const authHeaders = await getAuthHeaders();
+        const res = await fetch("/api/admin/whatsapp/settings", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json", ...authHeaders },
+          body: JSON.stringify(update),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        setAiSettings({
+          devMode: data.devMode !== false,
+          allowedNumbers: Array.isArray(data.allowedNumbers) ? data.allowedNumbers : [],
+          systemPrompt: typeof data.systemPrompt === "string" ? data.systemPrompt : "",
+        });
+      } finally {
+        setSavingSettings(false);
+      }
+    },
+    []
+  );
+
+  const handleOpenSettings = useCallback(() => {
+    setSettingsOpen(true);
+    fetchSettings();
+  }, [fetchSettings]);
+
+  const handleToggleDevMode = useCallback(
+    (devMode: boolean) => {
+      saveSettings({ ...aiSettings, devMode });
+    },
+    [aiSettings, saveSettings]
+  );
+
+  const handleAddNumber = useCallback(() => {
+    const digits = newNumberInput.replace(/\D/g, "");
+    if (!digits) return;
+    const next = aiSettings.allowedNumbers.includes(digits)
+      ? aiSettings.allowedNumbers
+      : [...aiSettings.allowedNumbers, digits];
+    setNewNumberInput("");
+    saveSettings({ ...aiSettings, allowedNumbers: next });
+  }, [aiSettings, newNumberInput, saveSettings]);
+
+  const handleRemoveNumber = useCallback(
+    (digits: string) => {
+      const next = aiSettings.allowedNumbers.filter((n) => n !== digits);
+      saveSettings({ ...aiSettings, allowedNumbers: next });
+    },
+    [aiSettings, saveSettings]
+  );
 
   /* ---------------------------------------------------------------- */
   /*  Realtime subscription (§3 of the guide)                          */
@@ -436,7 +530,17 @@ export default function WhatsAppDashboardPage() {
       {/* ---------- Conversation list ---------- */}
       <div className="whatsapp-dash__list">
         <div className="whatsapp-dash__list-header">
-          <h2 className="whatsapp-dash__title">WhatsApp</h2>
+          <div className="whatsapp-dash__title-row">
+            <h2 className="whatsapp-dash__title">WhatsApp</h2>
+            <button
+              type="button"
+              onClick={handleOpenSettings}
+              className="whatsapp-dash__settings-btn"
+              aria-label="Settings"
+            >
+              <SettingsIcon />
+            </button>
+          </div>
           <input
             type="text"
             placeholder="Search conversations..."
@@ -559,6 +663,162 @@ export default function WhatsAppDashboardPage() {
           </>
         )}
       </div>
+
+      {/* ---------- Settings modal ---------- */}
+      {settingsOpen && (
+        <div
+          className="whatsapp-dash__settings-backdrop"
+          onClick={() => setSettingsOpen(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-modal-title"
+        >
+          <div
+            className="whatsapp-dash__settings-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="whatsapp-dash__settings-header">
+              <h3 id="settings-modal-title" className="whatsapp-dash__settings-title">
+                Settings
+              </h3>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="whatsapp-dash__settings-close"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="whatsapp-dash__settings-body">
+              <div className="whatsapp-dash__settings-row">
+                <div className="whatsapp-dash__settings-label-block">
+                  <span className="whatsapp-dash__settings-label">AI reply mode</span>
+                  <span className="whatsapp-dash__settings-desc">
+                    {aiSettings.devMode
+                      ? "Dev: AI only replies to the numbers listed below."
+                      : "Live: AI replies to everyone."}
+                  </span>
+                </div>
+                <div className="whatsapp-dash__settings-toggle" role="group" aria-label="AI reply mode">
+                  <button
+                    type="button"
+                    className={`whatsapp-dash__settings-toggle-option ${aiSettings.devMode ? "whatsapp-dash__settings-toggle-option--on" : ""}`}
+                    onClick={() => handleToggleDevMode(true)}
+                    disabled={savingSettings}
+                  >
+                    Dev
+                  </button>
+                  <button
+                    type="button"
+                    className={`whatsapp-dash__settings-toggle-option ${!aiSettings.devMode ? "whatsapp-dash__settings-toggle-option--on" : ""}`}
+                    onClick={() => handleToggleDevMode(false)}
+                    disabled={savingSettings}
+                  >
+                    Live
+                  </button>
+                </div>
+              </div>
+              {aiSettings.devMode && (
+                <div className="whatsapp-dash__settings-numbers">
+                  <h4 className="whatsapp-dash__settings-numbers-title">
+                    Numbers AI replies to
+                  </h4>
+                  {aiSettings.allowedNumbers.length === 0 ? (
+                    <p className="whatsapp-dash__settings-muted">
+                      No numbers added. Add a number below.
+                    </p>
+                  ) : (
+                    <ul className="whatsapp-dash__settings-numbers-list">
+                      {aiSettings.allowedNumbers.map((digits) => (
+                        <li key={digits} className="whatsapp-dash__settings-numbers-item">
+                          <span className="whatsapp-dash__settings-number-display">
+                            +{digits}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNumber(digits)}
+                            className="whatsapp-dash__settings-remove"
+                            aria-label={`Remove +${digits}`}
+                          >
+                            Remove
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="whatsapp-dash__settings-add">
+                    <input
+                      type="tel"
+                      placeholder="e.g. 27693475825 or +27 69 347 5825"
+                      value={newNumberInput}
+                      onChange={(e) => setNewNumberInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddNumber())}
+                      className="whatsapp-dash__settings-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddNumber}
+                      disabled={savingSettings || !newNumberInput.trim()}
+                      className="whatsapp-dash__btn whatsapp-dash__btn--primary"
+                    >
+                      Add number
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="whatsapp-dash__settings-row whatsapp-dash__settings-row--prompt">
+                <div className="whatsapp-dash__settings-label-block">
+                  <span className="whatsapp-dash__settings-label">System prompt</span>
+                  <span className="whatsapp-dash__settings-desc">
+                    Instructions the AI follows for every reply.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPromptSectionOpen((open) => !open)}
+                  className="whatsapp-dash__btn whatsapp-dash__btn--secondary whatsapp-dash__settings-prompt-btn-inline"
+                  aria-expanded={promptSectionOpen}
+                >
+                  {promptSectionOpen ? "Hide" : "Edit"}
+                </button>
+              </div>
+              {promptSectionOpen && (
+                <div className="whatsapp-dash__settings-prompt-open">
+                  <label htmlFor="settings-system-prompt" className="whatsapp-dash__settings-prompt-label">
+                    Edit prompt
+                  </label>
+                  <textarea
+                      id="settings-system-prompt"
+                      rows={5}
+                      value={aiSettings.systemPrompt}
+                      onChange={(e) =>
+                        setAiSettings((prev) => ({ ...prev, systemPrompt: e.target.value }))
+                      }
+                      placeholder={DEFAULT_SYSTEM_PROMPT}
+                      className="whatsapp-dash__settings-textarea"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        saveSettings({
+                          systemPrompt:
+                            aiSettings.systemPrompt.trim() || DEFAULT_SYSTEM_PROMPT,
+                        })
+                      }
+                      disabled={savingSettings}
+                      className="whatsapp-dash__btn whatsapp-dash__btn--primary whatsapp-dash__settings-prompt-btn"
+                    >
+                      {savingSettings ? "Saving…" : "Save prompt"}
+                    </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

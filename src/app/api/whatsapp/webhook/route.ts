@@ -7,21 +7,13 @@ import { isHumanInControl } from "@/lib/whatsapp/humanControl";
 import { saveWhatsAppMessage } from "@/lib/whatsapp/messageStorage";
 import { sendWhatsAppMessage } from "@/lib/whatsapp/sender";
 import { processMessage } from "@/lib/whatsapp/aiAgent";
+import { isNumberAllowedForAi } from "@/lib/whatsapp/aiModeSettings";
 
 const SESSION_PREFIX = process.env.WHATSAPP_SESSION_ID_PREFIX ?? "APP-";
-
-/** Only this number (digits, with country code) gets AI replies. E.g. 27693475825. */
-const ALLOWED_AI_NUMBER = (process.env.WHATSAPP_ALLOWED_AI_NUMBER ?? "27693475825")
-  .replace(/\D/g, "");
 
 function buildSessionId(waId: string): string {
   const digits = waId.replace(/\D/g, "");
   return SESSION_PREFIX + digits;
-}
-
-function isAllowedForAi(waIdDigits: string): boolean {
-  const normalized = waIdDigits.replace(/\D/g, "");
-  return normalized.length > 0 && normalized === ALLOWED_AI_NUMBER;
 }
 
 // ---------------------------------------------------------------------------
@@ -68,7 +60,8 @@ export async function POST(request: NextRequest) {
     // Save incoming message to history
     await saveWhatsAppMessage(sessionId, "human", messageText, customer);
 
-    if (!isAllowedForAi(customerNumber)) {
+    const allowed = await isNumberAllowedForAi(customerNumber);
+    if (!allowed) {
       console.log(`[WhatsApp Webhook] Number ${customerNumber} not allowed for AI — skipping reply`);
       return NextResponse.json(
         { status: "ok", message: "Number not allowed for AI" },

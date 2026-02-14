@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getAIModeSettings, DEFAULT_SYSTEM_PROMPT } from "@/lib/whatsapp/aiModeSettings";
 
 const HISTORY_LIMIT = 20;
 
@@ -18,15 +19,13 @@ export async function processMessage(
     return { content: "Sorry, the assistant is not configured. Please try again later." };
   }
 
+  const settings = await getAIModeSettings();
+  const systemPrompt = settings.systemPrompt?.trim() || DEFAULT_SYSTEM_PROMPT;
+
   const openai = new OpenAI({ apiKey: openaiKey });
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
 
-  // System message
-  messages.push({
-    role: "system",
-    content:
-      "You are a helpful WhatsApp assistant. Be concise and professional. If you don't know something or the user asks for a human, say so.",
-  });
+  messages.push({ role: "system", content: systemPrompt });
 
   // Load last N messages from chatbot_history
   if (supabaseAdmin) {
