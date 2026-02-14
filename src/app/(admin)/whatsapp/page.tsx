@@ -83,9 +83,11 @@ export default function WhatsAppDashboardPage() {
     setListError(null);
     const res = await fetch("/api/admin/whatsapp/conversations", { credentials: "include" });
     if (!res.ok) {
-      const msg = res.status === 401
-        ? "Please log in again (session may have expired or you’re on a different domain)."
-        : "Failed to load conversations. On production, ensure Supabase env vars (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) are set in Vercel.";
+      let msg = "Failed to load conversations.";
+      try {
+        const body = await res.json();
+        if (body.reason) msg = body.reason;
+      } catch {}
       setListError(msg);
       setConversations([]);
       return;
@@ -98,9 +100,11 @@ export default function WhatsAppDashboardPage() {
     setMessagesError(null);
     const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`, { credentials: "include" });
     if (!res.ok) {
-      const msg = res.status === 401
-        ? "Session expired. Go to the home page and log in again."
-        : "Failed to load messages.";
+      let msg = "Failed to load messages.";
+      try {
+        const body = await res.json();
+        if (body.reason) msg = body.reason;
+      } catch {}
       setMessagesError(msg);
       setMessages([]);
       return;
@@ -268,7 +272,7 @@ export default function WhatsAppDashboardPage() {
           <h2 className="whatsapp-dash__title">WhatsApp</h2>
           <input
             type="text"
-            placeholder="Search conversations…"
+            placeholder="Search conversations..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="whatsapp-dash__search"
@@ -276,7 +280,7 @@ export default function WhatsAppDashboardPage() {
         </div>
         <div className="whatsapp-dash__conversations">
           {loading ? (
-            <p className="whatsapp-dash__muted">Loading…</p>
+            <p className="whatsapp-dash__muted">Loading...</p>
           ) : listError ? (
             <p className="whatsapp-dash__error" role="alert">{listError}</p>
           ) : filteredConversations.length === 0 ? (
@@ -306,7 +310,7 @@ export default function WhatsAppDashboardPage() {
                     {unread && <span className="whatsapp-dash__conv-unread" />}
                   </div>
                   <p className="whatsapp-dash__conv-preview">
-                    {c.lastMessageContent ?? "—"}
+                    {c.lastMessageContent ?? "--"}
                   </p>
                   <span className="whatsapp-dash__conv-time">
                     {c.lastMessageAt ? formatTime(c.lastMessageAt) : ""}
@@ -351,7 +355,7 @@ export default function WhatsAppDashboardPage() {
                 <>
                   <input
                     type="text"
-                    placeholder="Type a message…"
+                    placeholder="Type a message..."
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}

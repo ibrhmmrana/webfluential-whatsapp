@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { cookies } from "next/headers";
 import { createHmac } from "crypto";
 import DashboardLayoutClient from "./DashboardLayoutClient";

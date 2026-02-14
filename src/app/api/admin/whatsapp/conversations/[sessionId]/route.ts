@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { isAuthed, noIndexHeaders } from "@/lib/adminAuth";
+import { checkAuth, noIndexHeaders } from "@/lib/adminAuth";
 import { getConversationBySessionId } from "@/lib/chatHistories";
 
 export async function GET(
@@ -12,8 +12,12 @@ export async function GET(
   const headers = new Headers();
   Object.entries(noIndexHeaders()).forEach(([k, v]) => headers.set(k, v));
 
-  if (!isAuthed(request)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers });
+  const auth = checkAuth(request);
+  if (!auth.ok) {
+    return NextResponse.json(
+      { error: "Unauthorized", reason: auth.reason },
+      { status: 401, headers }
+    );
   }
 
   const { sessionId } = await params;

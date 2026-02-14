@@ -21,16 +21,36 @@ export function getCookieName(): string {
 /**
  * Check if the request has a valid admin auth cookie.
  * Cookie value must equal HMAC-SHA256(ADMIN_DASH_PASSWORD, ADMIN_DASH_COOKIE_SECRET).
+ *
+ * Returns { ok: true } or { ok: false, reason: string }.
  */
-export function isAuthed(request: NextRequest): boolean {
+export function checkAuth(request: NextRequest): { ok: true } | { ok: false; reason: string } {
   const expectedPassword = process.env.ADMIN_DASH_PASSWORD;
-  if (!expectedPassword) return false;
+  if (!expectedPassword) {
+    return { ok: false, reason: "ADMIN_DASH_PASSWORD env var is not set on server" };
+  }
+
+  const secret = process.env.ADMIN_DASH_COOKIE_SECRET;
+  if (!secret) {
+    return { ok: false, reason: "ADMIN_DASH_COOKIE_SECRET env var is not set on server" };
+  }
 
   const cookieValue = request.cookies.get(COOKIE_NAME)?.value;
-  if (!cookieValue) return false;
+  if (!cookieValue) {
+    return { ok: false, reason: `No '${COOKIE_NAME}' cookie received. Browser may not be sending the cookie.` };
+  }
 
   const expectedHash = hashToken(expectedPassword);
-  return cookieValue === expectedHash;
+  if (cookieValue !== expectedHash) {
+    return { ok: false, reason: "Cookie value does not match. Password or secret may differ between login and current env." };
+  }
+
+  return { ok: true };
+}
+
+/** Backward-compat boolean wrapper. */
+export function isAuthed(request: NextRequest): boolean {
+  return checkAuth(request).ok;
 }
 
 /**
