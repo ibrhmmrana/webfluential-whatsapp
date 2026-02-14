@@ -4,7 +4,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/supabase/server";
 import { noIndexHeaders } from "@/lib/adminAuth";
-import { getConversationBySessionId, getConversationRecent } from "@/lib/chatHistories";
+import { getConversationBySessionId } from "@/lib/chatHistories";
 
 export async function GET(
   request: NextRequest,
@@ -27,16 +27,10 @@ export async function GET(
     return NextResponse.json({ error: "sessionId required" }, { status: 400, headers });
   }
 
-  const recentParam = request.nextUrl.searchParams.get("recent");
-  const useFastPath = recentParam !== null && recentParam !== "";
-  const limit = useFastPath ? Math.min(500, Math.max(1, parseInt(recentParam, 10) || 100)) : 0;
-
-  const { messages, error } = useFastPath
-    ? await getConversationRecent(sessionId, limit)
-    : await getConversationBySessionId(sessionId);
+  const { messages, error } = await getConversationBySessionId(sessionId);
 
   console.log(
-    `[conversations/${sessionId}] mode=${useFastPath ? "recent" : "full"} returned=${messages.length} error=${error ?? "none"}`
+    `[conversations/${sessionId}] returned=${messages.length} error=${error ?? "none"}`
   );
 
   if (error) {

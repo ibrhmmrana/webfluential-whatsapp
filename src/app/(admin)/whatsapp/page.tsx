@@ -3,7 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { supabaseClient } from "@/lib/supabaseClient";
 
-const VIEWED_KEY = "webfluential_whatsapp_viewed";
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
 
 type ConversationSummary = {
   sessionId: string;
@@ -25,6 +27,12 @@ type ChatMessage = {
   createdAt: string;
 };
 
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+const VIEWED_KEY = "webfluential_whatsapp_viewed";
+
 function formatTime(iso: string) {
   const d = new Date(iso);
   const now = new Date();
@@ -32,8 +40,10 @@ function formatTime(iso: string) {
   const yesterday = new Date(today);
   yesterday.setDate(yesterday.getDate() - 1);
   const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  if (dDate.getTime() === today.getTime()) return "Today " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  if (dDate.getTime() === yesterday.getTime()) return "Yesterday " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (dDate.getTime() === today.getTime())
+    return "Today " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  if (dDate.getTime() === yesterday.getTime())
+    return "Yesterday " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
@@ -51,12 +61,41 @@ function getViewedSet(): Set<number> {
 function addViewed(id: number) {
   const set = getViewedSet();
   set.add(id);
-  try {
-    localStorage.setItem(VIEWED_KEY, JSON.stringify([...set]));
-  } catch {}
+  try { localStorage.setItem(VIEWED_KEY, JSON.stringify([...set])); } catch {}
 }
 
-/** Auth headers so API routes can validate when cookies are not sent (e.g. custom domain). */
+/** Safely parse a JSONB value that Supabase Realtime may return as object or string. */
+function parseJson<T = Record<string, unknown>>(val: unknown): T | null {
+  if (val == null) return null;
+  if (typeof val === "object" && !Array.isArray(val)) return val as T;
+  if (typeof val === "string") {
+    try { return JSON.parse(val) as T; } catch { return null; }
+  }
+  return null;
+}
+
+/** Convert a Realtime INSERT payload row into a ChatMessage. */
+function realtimeRowToMessage(row: {
+  id: number;
+  session_id: string;
+  message: unknown;
+  customer: unknown;
+  date_time: string;
+}): ChatMessage {
+  const msg = parseJson<{ type?: string; content?: string; body?: string }>(row.message);
+  const cust = parseJson<{ name?: string; number?: string }>(row.customer);
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    senderType: msg?.type === "human" ? "human" : "ai",
+    content: msg?.content ?? msg?.body ?? "",
+    customerName: cust?.name ?? null,
+    customerNumber: cust?.number ?? "",
+    createdAt: row.date_time,
+  };
+}
+
+/** Auth headers so API routes can validate when cookies are not sent. */
 async function getAuthHeaders(): Promise<Record<string, string>> {
   if (!supabaseClient) return {};
   const { data: { session } } = await supabaseClient.auth.getSession();
@@ -64,7 +103,12 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
   return {};
 }
 
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
 export default function WhatsAppDashboardPage() {
+  /* State */
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -76,51 +120,38 @@ export default function WhatsAppDashboardPage() {
   const [listError, setListError] = useState<string | null>(null);
   const [messagesError, setMessagesError] = useState<string | null>(null);
   const [viewedIds, setViewedIds] = useState<Set<number>>(getViewedSet);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  /* Refs */
   const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const selectedSessionIdRef = useRef(selectedSessionId);
   const conversationsRef = useRef(conversations);
+  const channelRef = useRef<ReturnType<NonNullable<typeof supabaseClient>["channel"]> | null>(null);
+
+  // Keep refs in sync
   selectedSessionIdRef.current = selectedSessionId;
   conversationsRef.current = conversations;
 
+  /* Derived */
   const selectedConv = conversations.find((c) => c.sessionId === selectedSessionId);
   const customerName = selectedConv?.customerName ?? selectedConv?.customerNumber ?? "Customer";
   const customerNumber = selectedConv?.customerNumber ?? "";
 
+  /* ---------------------------------------------------------------- */
+  /*  Data fetching                                                    */
+  /* ---------------------------------------------------------------- */
+
   const fetchConversations = useCallback(async () => {
     setListError(null);
-
-    const doFetch = async (headers: Record<string, string>) => {
-      return fetch("/api/admin/whatsapp/conversations", {
-        credentials: "include",
-        headers,
-        cache: "no-store",
-      });
-    };
-
-    let authHeaders = await getAuthHeaders();
-    let res = await doFetch(authHeaders);
-
-    // If 401 and we didn't send Bearer, wait for session and retry once (client may not have read cookies yet)
-    if (res.status === 401 && !authHeaders.Authorization) {
-      await new Promise((r) => setTimeout(r, 100));
-      authHeaders = await getAuthHeaders();
-      if (authHeaders.Authorization) res = await doFetch(authHeaders);
-    }
-
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch("/api/admin/whatsapp/conversations", {
+      credentials: "include",
+      headers: authHeaders,
+      cache: "no-store",
+    });
     if (!res.ok) {
-      if (res.status === 401) {
-        console.warn("[auth] 401 from conversations API:", {
-          cookiesTotal: res.headers.get("x-debug-cookies-total"),
-          cookiesSb: res.headers.get("x-debug-cookies-sb"),
-          hasBearer: res.headers.get("x-debug-has-bearer"),
-        });
-      }
       let msg = "Failed to load conversations.";
-      try {
-        const body = await res.json();
-        if (body.reason) msg = body.reason;
-      } catch {}
+      try { const b = await res.json(); if (b.reason) msg = b.reason; } catch {}
       setListError(msg);
       setConversations([]);
       return;
@@ -132,67 +163,48 @@ export default function WhatsAppDashboardPage() {
   const fetchMessages = useCallback(async (sessionId: string) => {
     setMessagesError(null);
     const authHeaders = await getAuthHeaders();
-    const url = `/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`;
-
-    const res = await fetch(url, {
+    const res = await fetch(`/api/admin/whatsapp/conversations/${encodeURIComponent(sessionId)}`, {
       credentials: "include",
       headers: authHeaders,
       cache: "no-store",
     });
     if (!res.ok) {
       let msg = "Failed to load messages.";
-      try {
-        const body = await res.json();
-        if (body.reason) msg = body.reason;
-      } catch {}
+      try { const b = await res.json(); if (b.reason) msg = b.reason; } catch {}
       setMessagesError(msg);
       setMessages([]);
       return;
     }
     const data = await res.json();
-    const msgs = data.messages ?? [];
+    const msgs: ChatMessage[] = data.messages ?? [];
     console.log(`[fetchMessages] ${sessionId}: ${msgs.length} messages loaded`);
     setMessages(msgs);
   }, []);
 
   const fetchHumanControl = useCallback(async (sessionId: string) => {
     const authHeaders = await getAuthHeaders();
-    const res = await fetch(`/api/admin/whatsapp/human-control?sessionId=${encodeURIComponent(sessionId)}`, {
-      credentials: "include",
-      headers: authHeaders,
-    });
+    const res = await fetch(
+      `/api/admin/whatsapp/human-control?sessionId=${encodeURIComponent(sessionId)}`,
+      { credentials: "include", headers: authHeaders }
+    );
     if (!res.ok) return;
     const data = await res.json();
     setHumanInControl(data.isHumanInControl === true);
   }, []);
 
-  useEffect(() => {
-    fetchConversations().finally(() => setLoading(false));
-  }, [fetchConversations]);
-
-  useEffect(() => {
-    if (!selectedSessionId) {
-      setMessages([]);
-      setHumanInControl(false);
-      return;
-    }
-    fetchMessages(selectedSessionId);
-    fetchHumanControl(selectedSessionId);
-  }, [selectedSessionId, fetchMessages, fetchHumanControl]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const scrollToBottom = () => {
-      el.scrollTop = el.scrollHeight;
-    };
-    scrollToBottom();
-    requestAnimationFrame(scrollToBottom);
-  }, [messages]);
+  /* ---------------------------------------------------------------- */
+  /*  Realtime subscription (§3 of the guide)                          */
+  /* ---------------------------------------------------------------- */
 
   useEffect(() => {
     const client = supabaseClient;
     if (!client) return;
+
+    // Unsubscribe previous channel if any
+    if (channelRef.current) {
+      client.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
 
     const channel = client
       .channel("chatbot_history_realtime")
@@ -207,33 +219,33 @@ export default function WhatsAppDashboardPage() {
             customer: unknown;
             date_time: string;
           };
-          const msg = typeof row.message === "string" ? (() => { try { return JSON.parse(row.message) as { type?: string; content?: string; body?: string }; } catch { return {}; } })() : (row.message as { type?: string; content?: string; body?: string }) ?? {};
-          const customer = typeof row.customer === "string" ? (() => { try { return JSON.parse(row.customer) as { number?: string; name?: string }; } catch { return {}; } })() : (row.customer as { number?: string; name?: string }) ?? {};
-          const newMsg: ChatMessage = {
-            id: row.id,
-            sessionId: row.session_id,
-            senderType: msg?.type === "human" ? "human" : "ai",
-            content: msg?.content ?? msg?.body ?? "",
-            customerName: customer?.name ?? null,
-            customerNumber: customer?.number ?? "",
-            createdAt: row.date_time,
-          };
+
+          const newMsg = realtimeRowToMessage(row);
           const currentSelected = selectedSessionIdRef.current;
+
+          /* ---- Update open conversation thread ---- */
           if (row.session_id === currentSelected) {
             setMessages((prev) => {
+              // Deduplicate by id (optimistic message may already be there)
               if (prev.some((m) => m.id === row.id)) return prev;
-              return [...prev, newMsg];
+              // Append and sort by id to keep correct order
+              const next = [...prev, newMsg];
+              next.sort((a, b) => a.id - b.id);
+              return next;
             });
-            if (newMsg.senderType === "human") addViewed(row.id);
-            setViewedIds(getViewedSet());
+
+            // Mark human messages as viewed
+            if (newMsg.senderType === "human") {
+              addViewed(row.id);
+              setViewedIds(getViewedSet());
+            }
           }
-          const currentList = conversationsRef.current;
-          const existingIdx = currentList.findIndex((c) => c.sessionId === row.session_id);
-          if (existingIdx >= 0) {
-            setConversations((prev) => {
+
+          /* ---- Update conversation list preview ---- */
+          setConversations((prev) => {
+            const idx = prev.findIndex((c) => c.sessionId === row.session_id);
+            if (idx >= 0) {
               const updated = [...prev];
-              const idx = updated.findIndex((c) => c.sessionId === row.session_id);
-              if (idx < 0) return prev;
               updated[idx] = {
                 ...updated[idx],
                 lastMessageContent: newMsg.content,
@@ -242,27 +254,67 @@ export default function WhatsAppDashboardPage() {
                 lastCustomerMessageId:
                   newMsg.senderType === "human" ? row.id : updated[idx].lastCustomerMessageId,
               };
-              return updated.sort((a, b) => {
-                const t1 = a.lastMessageAt ?? "";
-                const t2 = b.lastMessageAt ?? "";
-                return t2.localeCompare(t1);
-              });
-            });
-          } else {
+              updated.sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""));
+              return updated;
+            }
+            // New conversation we don't know about — refetch the full list
             fetchConversations();
-          }
+            return prev;
+          });
         }
       )
       .subscribe((status) => {
+        console.log(`[Realtime] subscription status: ${status}`);
         if (status === "SUBSCRIBED") {
+          // Refresh list once subscription is confirmed
           fetchConversations();
         }
       });
 
+    channelRef.current = channel;
+
     return () => {
       client.removeChannel(channel);
+      channelRef.current = null;
     };
   }, [fetchConversations]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Load conversations on mount                                      */
+  /* ---------------------------------------------------------------- */
+
+  useEffect(() => {
+    fetchConversations().finally(() => setLoading(false));
+  }, [fetchConversations]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Load messages when a conversation is selected                    */
+  /* ---------------------------------------------------------------- */
+
+  useEffect(() => {
+    if (!selectedSessionId) {
+      setMessages([]);
+      setHumanInControl(false);
+      return;
+    }
+    fetchMessages(selectedSessionId);
+    fetchHumanControl(selectedSessionId);
+  }, [selectedSessionId, fetchMessages, fetchHumanControl]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Scroll to bottom when messages change                            */
+  /* ---------------------------------------------------------------- */
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    // Jump to bottom immediately (no smooth scroll)
+    el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  /* ---------------------------------------------------------------- */
+  /*  Actions                                                          */
+  /* ---------------------------------------------------------------- */
 
   const handleTakeOver = async () => {
     if (!selectedSessionId) return;
@@ -291,6 +343,16 @@ export default function WhatsAppDashboardPage() {
     }
   };
 
+  /**
+   * Send a message from the dashboard (staff / human mode).
+   *
+   * Flow per the guide §4 "Staff sends a message":
+   * 1. POST to send-message API → sends via WhatsApp + saves to chatbot_history.
+   * 2. Optimistically add the message to the thread using the id/date_time
+   *    returned by the API, so the user sees it immediately.
+   * 3. When the Realtime INSERT arrives, the dedupe check (by id) prevents a
+   *    duplicate from being added.
+   */
   const handleSend = async () => {
     const text = inputValue.trim();
     if (!text || !customerNumber || sending) return;
@@ -307,13 +369,15 @@ export default function WhatsAppDashboardPage() {
         }),
         credentials: "include",
       });
+
       if (res.ok) {
         setInputValue("");
         const data = await res.json().catch(() => ({}));
-        const savedId = data?.id ?? -Date.now();
-        const savedAt = data?.date_time ?? new Date().toISOString();
-        // Show sent message in thread immediately (optimistic)
+        const savedId: number = data?.id ?? -Date.now(); // fallback
+        const savedAt: string = data?.date_time ?? new Date().toISOString();
+
         if (selectedSessionId) {
+          // Optimistic: add to thread immediately
           const optimistic: ChatMessage = {
             id: savedId,
             sessionId: selectedSessionId,
@@ -323,22 +387,23 @@ export default function WhatsAppDashboardPage() {
             customerNumber,
             createdAt: savedAt,
           };
-          setMessages((prev) => [...prev, optimistic]);
-        }
-        // Show sent message in list preview immediately
-        if (selectedSessionId) {
-          const now = savedAt;
+          setMessages((prev) => {
+            // Dedupe just in case Realtime was faster
+            if (prev.some((m) => m.id === savedId)) return prev;
+            const next = [...prev, optimistic];
+            next.sort((a, b) => a.id - b.id);
+            return next;
+          });
+
+          // Optimistic: update conversation list preview
           setConversations((prev) => {
             const updated = prev.map((c) =>
               c.sessionId === selectedSessionId
-                ? { ...c, lastMessageContent: text, lastMessageAt: now }
+                ? { ...c, lastMessageContent: text, lastMessageAt: savedAt }
                 : c
             );
-            return updated.sort((a, b) => {
-              const t1 = a.lastMessageAt ?? "";
-              const t2 = b.lastMessageAt ?? "";
-              return t2.localeCompare(t1);
-            });
+            updated.sort((a, b) => (b.lastMessageAt ?? "").localeCompare(a.lastMessageAt ?? ""));
+            return updated;
           });
         }
       }
@@ -347,18 +412,28 @@ export default function WhatsAppDashboardPage() {
     }
   };
 
+  /* ---------------------------------------------------------------- */
+  /*  Filtered list                                                    */
+  /* ---------------------------------------------------------------- */
+
   const filteredConversations = search.trim()
     ? conversations.filter((c) => {
         const q = search.toLowerCase();
-        const name = (c.customerName ?? "").toLowerCase();
-        const num = (c.customerNumber ?? "").toLowerCase();
-        const last = (c.lastMessageContent ?? "").toLowerCase();
-        return name.includes(q) || num.includes(q) || last.includes(q);
+        return (
+          (c.customerName ?? "").toLowerCase().includes(q) ||
+          (c.customerNumber ?? "").toLowerCase().includes(q) ||
+          (c.lastMessageContent ?? "").toLowerCase().includes(q)
+        );
       })
     : conversations;
 
+  /* ---------------------------------------------------------------- */
+  /*  Render                                                           */
+  /* ---------------------------------------------------------------- */
+
   return (
     <div className="whatsapp-dash">
+      {/* ---------- Conversation list ---------- */}
       <div className="whatsapp-dash__list">
         <div className="whatsapp-dash__list-header">
           <h2 className="whatsapp-dash__title">WhatsApp</h2>
@@ -413,6 +488,8 @@ export default function WhatsAppDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* ---------- Thread ---------- */}
       <div className="whatsapp-dash__thread">
         {!selectedSessionId ? (
           <div className="whatsapp-dash__empty">
@@ -424,7 +501,9 @@ export default function WhatsAppDashboardPage() {
               <h3 className="whatsapp-dash__thread-title">{customerName}</h3>
             </header>
             {messagesError && (
-              <p className="whatsapp-dash__error whatsapp-dash__error--thread" role="alert">{messagesError}</p>
+              <p className="whatsapp-dash__error whatsapp-dash__error--thread" role="alert">
+                {messagesError}
+              </p>
             )}
             <div ref={scrollRef} className="whatsapp-dash__messages">
               {messages.map((m) => (
@@ -434,9 +513,7 @@ export default function WhatsAppDashboardPage() {
                 >
                   <div className="whatsapp-dash__msg-bubble">
                     <p className="whatsapp-dash__msg-text">{m.content}</p>
-                    <span className="whatsapp-dash__msg-time">
-                      {formatTime(m.createdAt)}
-                    </span>
+                    <span className="whatsapp-dash__msg-time">{formatTime(m.createdAt)}</span>
                   </div>
                 </div>
               ))}
