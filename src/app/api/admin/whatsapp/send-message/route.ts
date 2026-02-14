@@ -53,7 +53,16 @@ export async function POST(request: NextRequest) {
   }
 
   const sessionId = buildSessionId(customerNumber);
-  await saveWhatsAppMessage(sessionId, "ai", message, customer);
+  const saveResult = await saveWhatsAppMessage(sessionId, "ai", message, customer);
+  if (saveResult.error) {
+    return NextResponse.json(
+      { error: saveResult.error ?? "Failed to save message" },
+      { status: 500, headers }
+    );
+  }
 
-  return NextResponse.json({ success: true }, { headers });
+  return NextResponse.json(
+    { success: true, id: saveResult.id, date_time: saveResult.date_time },
+    { headers }
+  );
 }

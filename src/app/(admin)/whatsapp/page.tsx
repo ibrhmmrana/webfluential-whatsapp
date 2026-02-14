@@ -228,7 +228,10 @@ export default function WhatsAppDashboardPage() {
           };
           const currentSelected = selectedSessionIdRef.current;
           if (row.session_id === currentSelected) {
-            setMessages((prev) => [...prev, newMsg]);
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === row.id)) return prev;
+              return [...prev, newMsg];
+            });
             if (newMsg.senderType === "human") addViewed(row.id);
             setViewedIds(getViewedSet());
           }
@@ -314,9 +317,25 @@ export default function WhatsAppDashboardPage() {
       });
       if (res.ok) {
         setInputValue("");
+        const data = await res.json().catch(() => ({}));
+        const savedId = data?.id ?? -Date.now();
+        const savedAt = data?.date_time ?? new Date().toISOString();
+        // Show sent message in thread immediately (optimistic)
+        if (selectedSessionId) {
+          const optimistic: ChatMessage = {
+            id: savedId,
+            sessionId: selectedSessionId,
+            senderType: "ai",
+            content: text,
+            customerName: selectedConv?.customerName ?? null,
+            customerNumber,
+            createdAt: savedAt,
+          };
+          setMessages((prev) => [...prev, optimistic]);
+        }
         // Show sent message in list preview immediately
         if (selectedSessionId) {
-          const now = new Date().toISOString();
+          const now = savedAt;
           setConversations((prev) => {
             const updated = prev.map((c) =>
               c.sessionId === selectedSessionId

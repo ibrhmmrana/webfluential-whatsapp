@@ -23,7 +23,7 @@ export async function saveWhatsAppMessage(
   content: string,
   customer: CustomerInfo,
   aiMetadata?: Record<string, unknown>
-): Promise<{ id?: number; error?: string }> {
+): Promise<{ id?: number; date_time?: string; error?: string }> {
   if (!supabaseAdmin) {
     return { error: "Supabase not configured" };
   }
@@ -41,11 +41,11 @@ export async function saveWhatsAppMessage(
       message,
       customer: { number: customer.number, name: customer.name ?? undefined },
     })
-    .select("id")
+    .select("id, date_time")
     .single();
 
   if (error) {
     return { error: error.message };
   }
-  return { id: data?.id };
+  return { id: data?.id, date_time: data?.date_time };
 }
