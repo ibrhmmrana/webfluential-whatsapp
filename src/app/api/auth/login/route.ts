@@ -5,30 +5,29 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 /**
- * Sets the Supabase session via server-set cookies so the browser reliably
- * persists auth across refresh and navigation (fixes custom-domain cookie issues).
+ * Server-side login: handles signInWithPassword entirely on the server
+ * and sets the session cookie via Set-Cookie header. No client-side
+ * Supabase auth needed — avoids dual-write cookie conflicts.
  */
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-  let body: { access_token?: string; refresh_token?: string };
+  let body: { email?: string; password?: string };
   try {
     body = await request.json();
   } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const { email, password } = body;
+  if (!email || !password) {
     return NextResponse.json(
-      { error: "Invalid JSON body" },
+      { error: "Email and password are required" },
       { status: 400 }
     );
   }
 
-  const { access_token, refresh_token } = body;
-  if (!access_token || !refresh_token) {
-    return NextResponse.json(
-      { error: "access_token and refresh_token required" },
-      { status: 400 }
-    );
-  }
-
+  // Collect cookies that the Supabase server client wants to set
   const cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[] = [];
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
@@ -42,23 +41,24 @@ export async function POST(request: NextRequest) {
     },
   });
 
-  const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 401 });
+    return NextResponse.json(
+      { error: error.message === "Invalid login credentials"
+          ? "Invalid email or password"
+          : error.message },
+      { status: 401 }
+    );
   }
 
-  // Diagnostic: return what cookies are being set
-  const cookieInfo = cookiesToSet.map(({ name, value, options }) => ({
-    name,
-    valueLength: value.length,
-    maxAge: (options as Record<string, unknown>)?.maxAge ?? null,
-  }));
-
+  // Build the response with Set-Cookie headers
   const response = NextResponse.json({
     ok: true,
-    cookiesSet: cookieInfo.length,
-    cookies: cookieInfo,
+    userId: data.user?.id ?? null,
+    cookiesSet: cookiesToSet.length,
   });
+
   cookiesToSet.forEach(({ name, value, options }) =>
     response.cookies.set(name, value, options as Record<string, unknown>)
   );

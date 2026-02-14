@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function AdminLoginForm() {
   const [error, setError] = useState("");
@@ -22,32 +21,19 @@ export default function AdminLoginForm() {
       return;
     }
 
-    const supabase = createClient();
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email, password }),
+    });
 
-    if (signInError) {
-      setError(signInError.message === "Invalid login credentials"
-        ? "Invalid email or password"
-        : signInError.message);
+    const body = await res.json();
+
+    if (!res.ok) {
+      setError(body.error ?? "Login failed");
       setLoading(false);
       return;
-    }
-
-    if (data?.session?.access_token && data?.session?.refresh_token) {
-      const setRes = await fetch("/api/auth/set-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        }),
-      });
-      if (!setRes.ok) {
-        setError("Session could not be saved. Try again.");
-        setLoading(false);
-        return;
-      }
     }
 
     window.location.href = "/";
