@@ -1091,59 +1091,74 @@ textarea {
   margin: 0 0 0.75rem;
   color: var(--text-primary);
 }
-.knowledge-dash__upload-choice {
-  margin-bottom: 1rem;
+.knowledge-dash__upload-choices {
+  margin-bottom: 1.5rem;
 }
 .knowledge-dash__upload-prompt {
   font-size: 0.9375rem;
   color: var(--text-primary);
   margin: 0 0 1rem;
 }
-.knowledge-dash__upload-options {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+.knowledge-dash__choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
 }
-.knowledge-dash__upload-option {
+.knowledge-dash__choice-card {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.25rem;
-  width: 100%;
-  padding: 1rem 1.25rem;
   text-align: left;
+  padding: 1.25rem;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--bg-secondary);
-  color: var(--text-primary);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
-.knowledge-dash__upload-option:hover {
+.knowledge-dash__choice-card:hover {
   border-color: var(--accent);
   background: var(--bg-tertiary);
 }
-.knowledge-dash__upload-option-title {
+.knowledge-dash__choice-title {
   font-weight: 600;
   font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
 }
-.knowledge-dash__upload-option-desc {
+.knowledge-dash__choice-desc {
   font-size: 0.875rem;
   color: var(--text-secondary);
   line-height: 1.4;
+  margin: 0;
 }
 .knowledge-dash__back-btn {
-  margin-bottom: 0.5rem;
-  padding: 0.35rem 0;
+  margin-bottom: 1rem;
+  padding: 0;
+  border: none;
+  background: none;
   font-size: 0.875rem;
   color: var(--text-muted);
-  background: none;
-  border: none;
   cursor: pointer;
   transition: color 0.15s;
 }
 .knowledge-dash__back-btn:hover {
   color: var(--accent);
+}
+.knowledge-dash__file-input {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+}
+.knowledge-dash__file-list {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0 0 0.5rem;
+}
+.knowledge-dash__paste-heading {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 1.25rem 0 0.5rem;
 }
 .knowledge-dash__form {
   display: flex;
