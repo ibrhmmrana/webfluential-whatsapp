@@ -492,6 +492,34 @@ textarea {
 .whatsapp-dash__conversations {
   flex: 1;
   overflow-y: auto;
+  scrollbar-gutter: stable;
+  --scrollbar-thumb: rgba(51, 65, 85, 0.9);
+  --scrollbar-thumb-hover: rgba(71, 85, 105, 0.95);
+  --scrollbar-track: transparent;
+}
+.whatsapp-dash__conversations::-webkit-scrollbar {
+  width: 8px;
+}
+.whatsapp-dash__conversations::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  margin: 4px 0;
+}
+.whatsapp-dash__conversations::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+  min-height: 40px;
+}
+.whatsapp-dash__conversations::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+.whatsapp-dash__conversations::-webkit-scrollbar-corner {
+  background: transparent;
+}
+@supports (scrollbar-width: thin) {
+  .whatsapp-dash__conversations {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
 }
 .whatsapp-dash__muted {
   padding: 1rem;
