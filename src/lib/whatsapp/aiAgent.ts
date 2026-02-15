@@ -1,8 +1,10 @@
 import OpenAI from "openai";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAIModeSettings, DEFAULT_SYSTEM_PROMPT } from "@/lib/whatsapp/aiModeSettings";
+import { searchKnowledge } from "@/lib/knowledge/search";
 
 const HISTORY_LIMIT = 20;
+const KNOWLEDGE_TOP_K = 5;
 
 export interface ProcessMessageResult {
   content: string;
@@ -25,7 +27,16 @@ export async function processMessage(
   const openai = new OpenAI({ apiKey: openaiKey });
   const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [];
 
-  messages.push({ role: "system", content: systemPrompt });
+  // Retrieve relevant knowledge base chunks for RAG
+  const knowledgeMatches = await searchKnowledge(userMessage, KNOWLEDGE_TOP_K);
+  let systemContent = systemPrompt;
+  if (knowledgeMatches.length > 0) {
+    const contextText = knowledgeMatches.map((m) => m.content).join("\n\n");
+    systemContent +=
+      "\n\nUse the following knowledge base context to answer when relevant. If the context does not contain the answer, say you don't know.\n\n---\n\n" +
+      contextText;
+  }
+  messages.push({ role: "system", content: systemContent });
 
   // Load last N messages from chatbot_history
   if (supabaseAdmin) {

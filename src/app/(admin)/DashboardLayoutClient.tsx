@@ -19,6 +19,16 @@ function IconWhatsApp() {
     </svg>
   );
 }
+function IconKnowledge() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      <path d="M8 7h8" />
+      <path d="M8 11h8" />
+    </svg>
+  );
+}
 function IconLogout() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -36,6 +46,7 @@ export default function DashboardLayoutClient({
   const pathname = usePathname();
   const homeActive = pathname === "/";
   const whatsappActive = pathname === "/whatsapp";
+  const knowledgeActive = pathname === "/knowledge";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleLogout = () => {
@@ -77,6 +88,13 @@ export default function DashboardLayoutClient({
           >
             <span className="dashboard-admin__nav-icon"><IconWhatsApp /></span>
             <span className="dashboard-admin__nav-item-text">WhatsApp</span>
+          </Link>
+          <Link
+            href="/knowledge"
+            className={`dashboard-admin__nav-item ${knowledgeActive ? "dashboard-admin__nav-item--active" : ""}`}
+          >
+            <span className="dashboard-admin__nav-icon"><IconKnowledge /></span>
+            <span className="dashboard-admin__nav-item-text">Knowledge</span>
           </Link>
         </nav>
         <div className="dashboard-admin__footer">
