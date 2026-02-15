@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { supabaseClient } from "@/lib/supabaseClient";
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  if (!supabaseClient) return {};
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session?.access_token) return { Authorization: `Bearer ${session.access_token}` };
+  return {};
+}
 
 function IconHome() {
   return (
@@ -29,6 +37,13 @@ function IconKnowledge() {
     </svg>
   );
 }
+function IconPrompt() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
 function IconLogout() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -47,7 +62,92 @@ export default function DashboardLayoutClient({
   const homeActive = pathname === "/";
   const whatsappActive = pathname === "/whatsapp";
   const knowledgeActive = pathname === "/knowledge";
+  const promptActive = pathname === "/prompt";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [devMode, setDevMode] = useState(true);
+  const [allowedNumbers, setAllowedNumbers] = useState<string[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [whitelistOpen, setWhitelistOpen] = useState(false);
+  const [removingNumber, setRemovingNumber] = useState<string | null>(null);
+  const [newNumberInput, setNewNumberInput] = useState("");
+  const [addingNumber, setAddingNumber] = useState(false);
+  const whitelistRef = useRef<HTMLDivElement>(null);
+
+  const fetchSettings = useCallback(async () => {
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch("/api/admin/whatsapp/settings", {
+      credentials: "include",
+      headers: authHeaders,
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    setDevMode(data.devMode !== false);
+    setAllowedNumbers(Array.isArray(data.allowedNumbers) ? data.allowedNumbers : []);
+  }, []);
+
+  useEffect(() => {
+    fetchSettings().finally(() => setSettingsLoading(false));
+  }, [fetchSettings]);
+
+  const handleToggleDevMode = useCallback(async (next: boolean) => {
+    setDevMode(next);
+    const authHeaders = await getAuthHeaders();
+    await fetch("/api/admin/whatsapp/settings", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ devMode: next }),
+    });
+  }, []);
+
+  const handleRemoveNumber = useCallback(async (digits: string) => {
+    setRemovingNumber(digits);
+    const next = allowedNumbers.filter((n) => n !== digits);
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch("/api/admin/whatsapp/settings", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ allowedNumbers: next }),
+    });
+    setRemovingNumber(null);
+    if (res.ok) {
+      const data = await res.json();
+      setAllowedNumbers(Array.isArray(data.allowedNumbers) ? data.allowedNumbers : next);
+    }
+  }, [allowedNumbers]);
+
+  const handleAddNumber = useCallback(async () => {
+    const digits = newNumberInput.replace(/\D/g, "").trim();
+    if (!digits || allowedNumbers.includes(digits)) return;
+    setAddingNumber(true);
+    const next = [...allowedNumbers, digits];
+    const authHeaders = await getAuthHeaders();
+    const res = await fetch("/api/admin/whatsapp/settings", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json", ...authHeaders },
+      body: JSON.stringify({ allowedNumbers: next }),
+    });
+    setAddingNumber(false);
+    setNewNumberInput("");
+    if (res.ok) {
+      const data = await res.json();
+      setAllowedNumbers(Array.isArray(data.allowedNumbers) ? data.allowedNumbers : next);
+    }
+  }, [allowedNumbers, newNumberInput]);
+
+  useEffect(() => {
+    if (!whitelistOpen) return;
+    const close = (e: MouseEvent) => {
+      if (whitelistRef.current && !whitelistRef.current.contains(e.target as Node)) {
+        setWhitelistOpen(false);
+      }
+    };
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [whitelistOpen]);
 
   const handleLogout = () => {
     window.location.href = "/api/admin/logout";
@@ -96,8 +196,92 @@ export default function DashboardLayoutClient({
             <span className="dashboard-admin__nav-icon"><IconKnowledge /></span>
             <span className="dashboard-admin__nav-item-text">Knowledge</span>
           </Link>
+          <Link
+            href="/prompt"
+            className={`dashboard-admin__nav-item ${promptActive ? "dashboard-admin__nav-item--active" : ""}`}
+          >
+            <span className="dashboard-admin__nav-icon"><IconPrompt /></span>
+            <span className="dashboard-admin__nav-item-text">System prompt</span>
+          </Link>
         </nav>
         <div className="dashboard-admin__footer">
+          {!sidebarCollapsed && (
+            <div className="dashboard-admin__footer-mode">
+              <div className="dashboard-admin__footer-mode-row">
+                <span className={`dashboard-admin__footer-dot ${devMode ? "dashboard-admin__footer-dot--dev" : "dashboard-admin__footer-dot--live"}`} />
+                <span className="dashboard-admin__footer-mode-label">
+                  {devMode ? "Dev mode" : "Live"}
+                </span>
+                <button
+                  type="button"
+                  className={`dashboard-admin__footer-switch ${!devMode ? "dashboard-admin__footer-switch--on" : ""}`}
+                  onClick={() => handleToggleDevMode(!devMode)}
+                  disabled={settingsLoading}
+                  role="switch"
+                  aria-checked={!devMode}
+                  title={devMode ? "Switch to Live" : "Switch to Dev"}
+                >
+                  <span className="dashboard-admin__footer-switch-thumb" />
+                </button>
+              </div>
+              {devMode && (
+                <div className="dashboard-admin__footer-whitelist" ref={whitelistRef}>
+                  <button
+                    type="button"
+                    className="dashboard-admin__footer-whitelist-link"
+                    onClick={(e) => { e.stopPropagation(); setWhitelistOpen((o) => !o); }}
+                    aria-expanded={whitelistOpen}
+                  >
+                    {allowedNumbers.length} whitelisted number{allowedNumbers.length !== 1 ? "s" : ""}
+                    <span className="dashboard-admin__footer-whitelist-chevron">{whitelistOpen ? "▴" : "▾"}</span>
+                  </button>
+                  {whitelistOpen && (
+                    <div className="dashboard-admin__footer-whitelist-dropdown">
+                      {allowedNumbers.length === 0 ? (
+                        <p className="dashboard-admin__footer-whitelist-empty">No numbers yet. Add one below.</p>
+                      ) : (
+                        <ul className="dashboard-admin__footer-whitelist-list">
+                          {allowedNumbers.map((num) => (
+                            <li key={num} className="dashboard-admin__footer-whitelist-item">
+                              <span className="dashboard-admin__footer-whitelist-num">+{num}</span>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); handleRemoveNumber(num); }}
+                                disabled={removingNumber === num}
+                                className="dashboard-admin__footer-whitelist-remove"
+                                aria-label={`Remove +${num}`}
+                              >
+                                {removingNumber === num ? "…" : "Remove"}
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="dashboard-admin__footer-whitelist-add">
+                        <input
+                          type="tel"
+                          value={newNumberInput}
+                          onChange={(e) => setNewNumberInput(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleAddNumber())}
+                          placeholder="e.g. 27693475825"
+                          className="dashboard-admin__footer-whitelist-input"
+                          disabled={addingNumber}
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleAddNumber(); }}
+                          disabled={addingNumber || !newNumberInput.replace(/\D/g, "").trim()}
+                          className="dashboard-admin__footer-whitelist-add-btn"
+                        >
+                          {addingNumber ? "…" : "Add"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <button
             type="button"
             className="dashboard-admin__logout"

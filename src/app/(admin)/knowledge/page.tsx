@@ -51,20 +51,25 @@ export default function KnowledgeBasePage() {
 
   const fetchSources = useCallback(async () => {
     setError(null);
-    const authHeaders = await getAuthHeaders();
-    const res = await fetch("/api/admin/knowledge", {
-      credentials: "include",
-      headers: authHeaders,
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error ?? "Failed to load knowledge base");
-      setSources([]);
-      return;
+    setLoading(true);
+    try {
+      const authHeaders = await getAuthHeaders();
+      const res = await fetch("/api/admin/knowledge", {
+        credentials: "include",
+        headers: authHeaders,
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Failed to load knowledge base");
+        setSources([]);
+        return;
+      }
+      const data = await res.json();
+      setSources(data.sources ?? []);
+    } finally {
+      setLoading(false);
     }
-    const data = await res.json();
-    setSources(data.sources ?? []);
   }, []);
 
   useEffect(() => {
@@ -188,7 +193,6 @@ export default function KnowledgeBasePage() {
 
         {uploadChoice === null ? (
           <div className="knowledge-dash__upload-choices">
-            <p className="knowledge-dash__upload-prompt">How do you want to upload data?</p>
             <div className="knowledge-dash__choice-grid">
               <button
                 type="button"

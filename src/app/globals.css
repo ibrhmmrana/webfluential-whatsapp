@@ -392,6 +392,193 @@ textarea {
   margin-top: auto;
   padding: 1rem 1.25rem;
   border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+/* Footer mode widget */
+.dashboard-admin__footer-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dashboard-admin__footer-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.dashboard-admin__footer-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dashboard-admin__footer-dot--dev {
+  background: #f59e0b;
+}
+.dashboard-admin__footer-dot--live {
+  background: #22c55e;
+}
+.dashboard-admin__footer-mode-label {
+  flex: 1;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+/* Toggle switch */
+.dashboard-admin__footer-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+.dashboard-admin__footer-switch--on {
+  background: #22c55e;
+}
+.dashboard-admin__footer-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.dashboard-admin__footer-switch--on .dashboard-admin__footer-switch-thumb {
+  transform: translateX(16px);
+}
+/* Whitelist link + dropdown */
+.dashboard-admin__footer-whitelist {
+  position: relative;
+}
+.dashboard-admin__footer-whitelist-link {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.dashboard-admin__footer-whitelist-link:hover {
+  color: var(--text-primary);
+}
+.dashboard-admin__footer-whitelist-chevron {
+  font-size: 0.65rem;
+}
+.dashboard-admin__footer-whitelist-dropdown {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+.dashboard-admin__footer-whitelist-empty {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+.dashboard-admin__footer-whitelist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8125rem;
+  color: var(--text-primary);
+}
+.dashboard-admin__footer-whitelist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-variant-numeric: tabular-nums;
+}
+.dashboard-admin__footer-whitelist-item:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+.dashboard-admin__footer-whitelist-num {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dashboard-admin__footer-whitelist-remove {
+  flex-shrink: 0;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.dashboard-admin__footer-whitelist-remove:hover:not(:disabled) {
+  color: var(--error, #c00);
+  border-color: var(--error, #c00);
+}
+.dashboard-admin__footer-whitelist-remove:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.dashboard-admin__footer-whitelist-add {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+.dashboard-admin__footer-whitelist-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.dashboard-admin__footer-whitelist-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.dashboard-admin__footer-whitelist-input::placeholder {
+  color: var(--text-muted);
+}
+.dashboard-admin__footer-whitelist-add-btn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.dashboard-admin__footer-whitelist-add-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.dashboard-admin__footer-whitelist-add-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 .dashboard-admin__logout {
   display: flex;
@@ -399,25 +586,38 @@ textarea {
   gap: 0.5rem;
   color: var(--text-secondary);
   font-size: 0.875rem;
+  font-weight: 500;
   text-decoration: none;
   background: none;
   border: none;
   cursor: pointer;
   font-family: inherit;
-  padding: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+  transition: color 0.15s, background 0.15s;
 }
 .dashboard-admin__logout-icon {
-  display: none;
-  flex-shrink: 0;
-}
-.dashboard-admin--sidebar-collapsed .dashboard-admin__logout-icon {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   color: inherit;
+}
+.dashboard-admin__logout-icon svg {
+  width: 18px;
+  height: 18px;
 }
 .dashboard-admin__logout:hover {
   color: var(--accent);
+  background: var(--bg-tertiary);
+}
+.dashboard-admin--sidebar-collapsed .dashboard-admin__logout {
+  margin-top: 0;
+  padding-top: 0.5rem;
+  border-top: none;
 }
 
 /* WhatsApp dashboard */
@@ -863,6 +1063,10 @@ textarea {
   color: var(--text-muted);
   line-height: 1.35;
 }
+.whatsapp-dash__settings-desc--block {
+  display: block;
+  margin: 0 0 1rem;
+}
 .whatsapp-dash__settings-toggle {
   display: flex;
   border-radius: 8px;
@@ -1093,11 +1297,6 @@ textarea {
 }
 .knowledge-dash__upload-choices {
   margin-bottom: 1.5rem;
-}
-.knowledge-dash__upload-prompt {
-  font-size: 0.9375rem;
-  color: var(--text-primary);
-  margin: 0 0 1rem;
 }
 .knowledge-dash__choice-grid {
   display: grid;
