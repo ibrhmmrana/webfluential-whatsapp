@@ -44,6 +44,24 @@ function IconPrompt() {
     </svg>
   );
 }
+function IconAI() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M9.5 6C9.93043 6 10.3126 6.27543 10.4487 6.68377L11.9156 11.0844L16.3162 12.5513C16.7246 12.6874 17 13.0696 17 13.5C17 13.9304 16.7246 14.3126 16.3162 14.4487L11.9156 15.9156L10.4487 20.3162C10.3126 20.7246 9.93043 21 9.5 21C9.06957 21 8.68743 20.7246 8.55132 20.3162L7.08443 15.9156L2.68377 14.4487C2.27543 14.3126 2 13.0696 2 13.5C2 13.0696 2.27543 12.6874 2.68377 12.5513L7.08443 11.0844L8.55132 6.68377C8.68743 6.27543 9.06957 6 9.5 6ZM9.5 10.1623L8.82368 12.1912C8.72415 12.4898 8.48983 12.7241 8.19123 12.8237L6.16228 13.5L8.19123 14.1763C8.48983 14.2759 8.72415 14.5102 8.82368 14.8088L9.5 16.8377L10.1763 14.8088C10.2759 14.5102 10.5102 14.2759 10.8088 14.1763L12.8377 13.5L10.8088 12.8237C10.5102 12.7241 10.2759 12.4898 10.1763 12.1912L9.5 10.1623Z"
+        fill="currentColor"
+      />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M17.5 2.4C17.7583 2.4 17.9875 2.56526 18.0692 2.81026L18.8493 5.15066L21.1897 5.93079C21.4347 6.01246 21.6 6.24174 21.6 6.5C21.6 6.75826 21.4347 6.98754 21.1897 7.06921L18.8493 7.84934L18.0692 10.1897C17.9875 10.4347 17.7583 10.6 17.5 10.6C17.2417 10.6 17.0125 10.4347 16.9308 10.1897L16.1507 7.84934L13.8103 7.06921C13.5653 6.98754 13.4 6.75826 13.4 6.5C13.4 6.24174 13.5653 6.01246 13.8103 5.93079L16.1507 5.15066L16.9308 2.81026C17.0125 2.56526 17.2417 2.4 17.5 2.4Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 function IconLogout() {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -62,7 +80,7 @@ export default function DashboardLayoutClient({
   const homeActive = pathname === "/";
   const whatsappActive = pathname === "/whatsapp";
   const knowledgeActive = pathname === "/knowledge";
-  const promptActive = pathname === "/prompt";
+  const aiActive = pathname === "/ai";
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [devMode, setDevMode] = useState(true);
   const [allowedNumbers, setAllowedNumbers] = useState<string[]>([]);
@@ -197,11 +215,11 @@ export default function DashboardLayoutClient({
             <span className="dashboard-admin__nav-item-text">Knowledge</span>
           </Link>
           <Link
-            href="/prompt"
-            className={`dashboard-admin__nav-item ${promptActive ? "dashboard-admin__nav-item--active" : ""}`}
+            href="/ai"
+            className={`dashboard-admin__nav-item ${aiActive ? "dashboard-admin__nav-item--active" : ""}`}
           >
-            <span className="dashboard-admin__nav-icon"><IconPrompt /></span>
-            <span className="dashboard-admin__nav-item-text">System prompt</span>
+            <span className="dashboard-admin__nav-icon"><IconAI /></span>
+            <span className="dashboard-admin__nav-item-text">AI</span>
           </Link>
         </nav>
         <div className="dashboard-admin__footer">

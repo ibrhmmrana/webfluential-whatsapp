@@ -60,8 +60,9 @@ export async function processMessage(
   // Current user message
   messages.push({ role: "user", content: userMessage });
 
+  const model = settings.model?.trim() || "gpt-4o-mini";
   const completion = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model,
     messages,
   });
 

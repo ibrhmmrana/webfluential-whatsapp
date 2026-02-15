@@ -12,6 +12,9 @@
   --border: #334155;
   --font-sans: "Manrope", system-ui, sans-serif;
   --font-display: "Sulphur Point", system-ui, sans-serif;
+  --scrollbar-thumb: rgba(51, 65, 85, 0.9);
+  --scrollbar-thumb-hover: rgba(71, 85, 105, 0.95);
+  --scrollbar-track: transparent;
 }
 
 * {
@@ -26,6 +29,36 @@ body {
   color: var(--text-primary);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Global scrollbar: same design as WhatsApp window (all pages) */
+html {
+  scrollbar-gutter: stable;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  margin: 4px 0;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+  min-height: 40px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+@supports (scrollbar-width: thin) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
 }
 
 a {
@@ -1271,6 +1304,23 @@ textarea {
   max-width: 900px;
   padding: 0;
 }
+
+/* AI page: comfortable padding and spacing */
+.knowledge-dash.ai-page {
+  padding: 0.5rem 0 2rem;
+}
+.knowledge-dash.ai-page .knowledge-dash__form {
+  gap: 1rem;
+}
+.knowledge-dash.ai-page .knowledge-dash__form-section {
+  margin-bottom: 0;
+}
+.knowledge-dash.ai-page .ai-model-picker {
+  margin-top: 0.25rem;
+}
+.knowledge-dash.ai-page .knowledge-dash__header {
+  margin-bottom: 2rem;
+}
 .knowledge-dash__header {
   margin-bottom: 1.5rem;
 }
@@ -1381,6 +1431,52 @@ textarea {
 .knowledge-dash__input:focus {
   outline: none;
   border-color: var(--accent);
+}
+.knowledge-dash__select {
+  cursor: pointer;
+  appearance: auto;
+}
+
+/* AI model picker */
+.ai-model-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.5rem;
+}
+.ai-model-picker__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ai-model-picker__card:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--text-muted);
+}
+.ai-model-picker__card--selected {
+  border-color: var(--accent);
+  background: rgba(54, 178, 250, 0.08);
+}
+.ai-model-picker__card--selected:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(54, 178, 250, 0.12);
+}
+.ai-model-picker__name {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.2rem;
+}
+.ai-model-picker__desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.35;
 }
 .knowledge-dash__textarea {
   padding: 0.65rem 0.75rem;

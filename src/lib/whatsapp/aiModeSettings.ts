@@ -6,6 +6,7 @@ export type AIModeSettings = {
   devMode: boolean;
   allowedNumbers: string[];
   systemPrompt: string;
+  model: string;
 };
 
 const DEFAULT_ALLOWED = (process.env.WHATSAPP_ALLOWED_AI_NUMBER ?? "27693475825")
@@ -14,10 +15,13 @@ const DEFAULT_ALLOWED = (process.env.WHATSAPP_ALLOWED_AI_NUMBER ?? "27693475825"
 export const DEFAULT_SYSTEM_PROMPT =
   "You are a helpful WhatsApp assistant. Be concise and professional. If you don't know something or the user asks for a human, say so.";
 
+export const DEFAULT_MODEL = "gpt-4o-mini";
+
 const DEFAULTS: AIModeSettings = {
   devMode: true,
   allowedNumbers: DEFAULT_ALLOWED ? [DEFAULT_ALLOWED] : [],
   systemPrompt: DEFAULT_SYSTEM_PROMPT,
+  model: DEFAULT_MODEL,
 };
 
 /** Normalize to digits only (e.g. 27693475825). */
@@ -44,6 +48,7 @@ export async function getAIModeSettings(): Promise<AIModeSettings> {
     devMode?: boolean;
     allowedNumbers?: string[];
     systemPrompt?: string;
+    model?: string;
   };
   const allowed = Array.isArray(v.allowedNumbers)
     ? v.allowedNumbers.map(normalizeNumber).filter(Boolean)
@@ -52,10 +57,13 @@ export async function getAIModeSettings(): Promise<AIModeSettings> {
     typeof v.systemPrompt === "string" && v.systemPrompt.trim()
       ? v.systemPrompt.trim()
       : DEFAULTS.systemPrompt;
+  const model =
+    typeof v.model === "string" && v.model.trim() ? v.model.trim() : DEFAULTS.model;
   return {
     devMode: typeof v.devMode === "boolean" ? v.devMode : DEFAULTS.devMode,
     allowedNumbers: allowed.length ? allowed : DEFAULTS.allowedNumbers,
     systemPrompt,
+    model,
   };
 }
 
@@ -79,6 +87,10 @@ export async function setAIModeSettings(
       update.systemPrompt !== undefined
         ? (typeof update.systemPrompt === "string" ? update.systemPrompt : "").trim() || current.systemPrompt
         : current.systemPrompt,
+    model:
+      update.model !== undefined
+        ? (typeof update.model === "string" ? update.model : "").trim() || DEFAULTS.model
+        : current.model,
   };
 
   const { error } = await supabaseAdmin
